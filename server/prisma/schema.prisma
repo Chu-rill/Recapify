@@ -1,0 +1,137 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+  output   = "../generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id          String       @id @unique @default(cuid())
+  username    String
+  email       String       @unique
+  password    String?
+  phone       String?
+  profile     String?
+  role        Role         @default(USER)
+  isVerified  Boolean      @default(false)
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+  OTP         Otp?
+  documents   Document[]
+  audioTracks AudioTrack[]
+}
+
+enum Role {
+  ADMIN
+  USER
+}
+
+model Otp {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  user      User     @relation(fields: [email], references: [email], onDelete: Cascade)
+  code      String
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+}
+
+model Document {
+  id               String           @id @default(cuid())
+  title            String
+  fileName         String
+  fileUrl          String
+  fileSize         Int // size in bytes
+  fileType         String // e.g., "application/pdf"
+  pageCount        Int?
+  uploadedAt       DateTime         @default(now())
+  processedAt      DateTime?
+  processingStatus ProcessingStatus @default(PENDING)
+  userId           String
+  user             User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  summary          Summary?
+  audioTracks      AudioTrack[]
+}
+
+enum ProcessingStatus {
+  PENDING
+  PROCESSING
+  COMPLETED
+  FAILED
+}
+
+model Summary {
+  id           String       @id @default(cuid())
+  content      String       @db.Text
+  shortSummary String?      @db.Text // A shorter version for previews
+  keyPoints    String[] // Array of key points extracted
+  createdAt    DateTime     @default(now())
+  documentId   String       @unique
+  document     Document     @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  audioTracks  AudioTrack[]
+}
+
+model AudioTrack {
+  id         String   @id @default(cuid())
+  title      String
+  duration   Int // duration in seconds
+  fileUrl    String
+  fileSize   Int // size in bytes
+  format     String // e.g., "mp3", "wav"
+  voiceType  String // e.g., "male_1", "female_2"
+  createdAt  DateTime @default(now())
+  documentId String
+  document   Document @relation(fields: [documentId], references: [id])
+  summaryId  String?
+  summary    Summary? @relation(fields: [summaryId], references: [id])
+  userId     String
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model VoiceProfile {
+  id          String   @id @default(cuid())
+  name        String
+  description String?
+  gender      String? // e.g., "male", "female", "neutral"
+  accentType  String? // e.g., "American", "British", "Australian"
+  previewUrl  String? // URL to a sample audio
+  isDefault   Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model UserSubscription {
+  id           String             @id @default(cuid())
+  userId       String             @unique
+  planId       String
+  status       SubscriptionStatus
+  startDate    DateTime           @default(now())
+  endDate      DateTime?
+  trialEndsAt  DateTime?
+  canceledAt   DateTime?
+  monthlyQuota Int // Number of documents/summaries allowed per month
+  currentUsage Int                @default(0)
+  resetDate    DateTime // When the quota resets
+}
+
+enum SubscriptionStatus {
+  ACTIVE
+  CANCELED
+  EXPIRED
+  TRIAL
+}
+
+model UsageLog {
+  id           String   @id @default(cuid())
+  userId       String
+  documentId   String?
+  audioTrackId String?
+  action       String // e.g., "upload", "summarize", "generate_audio"
+  timestamp    DateTime @default(now())
+  metadata     Json? // Additional data about the operation
+}

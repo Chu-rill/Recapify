@@ -1,13 +1,18 @@
-import { HttpStatus, Injectable, NotFoundException } from '@nestjs/common';
-import { LoginDto, OTPDto, ResendDto, SignUpDto } from './dto/auth.dto';
-import { UserRepository } from 'src/user/user.repository';
-import { JwtService } from '@nestjs/jwt';
+import { HttpStatus, Injectable, NotFoundException } from "@nestjs/common";
+import { UserRepository } from "src/user/user.repository";
+import { JwtService } from "@nestjs/jwt";
 import {
   encrypt,
   comparePassword,
-} from 'src/utils/helper-functions/encryption';
-import { OtpService } from 'src/otp/otp.service';
-import { MailService } from 'src/infra/mail/mail.service';
+} from "src/utils/helper-functions/encryption";
+import { OtpService } from "src/otp/otp.service";
+import { MailService } from "src/infra/mail/mail.service";
+import {
+  CreateLoginDto,
+  CreateOTPDto,
+  CreateSignupDto,
+  ResendOTPDto,
+} from "./validation";
 
 @Injectable()
 export class AuthService {
@@ -15,16 +20,16 @@ export class AuthService {
     private userRespository: UserRepository,
     private jwt: JwtService,
     private otp: OtpService,
-    private mailService: MailService,
+    private mailService: MailService
   ) {}
-  async signup(dto: SignUpDto) {
+  async signup(dto: CreateSignupDto) {
     try {
       // Check if user already exists
       let existingUser = await this.userRespository.findUserByEmail(dto.email);
       if (existingUser) {
         return {
           statusCode: HttpStatus.CONFLICT,
-          message: 'Email already exists',
+          message: "Email already exists",
           data: null,
         };
       }
@@ -36,51 +41,26 @@ export class AuthService {
         dto.email,
         hashedPassword,
         dto.phone,
-        dto.role,
+        dto.role || "USER" // Provide default role if undefined
       );
-
-      // Create profile based on role
-      let profile;
-      if (user.role === 'STAFF') {
-        // Validate hotel ID before creating staff
-        if (!dto.hotelId) {
-          return {
-            statusCode: HttpStatus.BAD_REQUEST,
-            message: 'Hotel ID is required for staff registration',
-            data: null,
-          };
-        }
-        profile = await this.userRespository.createStaff(user.id, dto.hotelId);
-      } else if (user.role === 'CUSTOMER') {
-        profile = await this.userRespository.createCustomer(user.id);
-      } else if (user.role === 'ADMIN') {
-        // Handle admin role if needed
-        // For now, no special profile is created
-      } else {
-        return {
-          statusCode: HttpStatus.BAD_REQUEST,
-          message: 'Invalid role specified',
-          data: null,
-        };
-      }
 
       // Generate and send OTP
       try {
         const otp = await this.otp.generateOTP(user.email);
         const data = {
-          subject: 'InnkeeperPro validation',
+          subject: "Recapify Validation",
           username: user.username,
           OTP: otp,
         };
         await this.mailService.sendWelcomeEmail(user.email, data);
       } catch (emailError) {
-        console.log('Failed to send welcome email:', emailError);
+        console.log("Failed to send welcome email:", emailError);
         // Continue with signup even if email fails, but log the error
       }
 
       return {
         statusCode: HttpStatus.CREATED,
-        message: 'User signup successful',
+        message: "User signup successful",
         data: {
           id: user.id,
           username: user.username,
@@ -90,52 +70,43 @@ export class AuthService {
         },
       };
     } catch (error) {
-      console.log('Error in signup:', error);
+      console.log("Error in signup:", error);
 
       // Categorize errors based on type
-      if (error.code === '23505' || error.code === 'ER_DUP_ENTRY') {
+      if (error.code === "23505" || error.code === "ER_DUP_ENTRY") {
         return {
           statusCode: HttpStatus.CONFLICT,
-          message: 'A database conflict occurred, possibly a duplicate entry',
+          message: "A database conflict occurred, possibly a duplicate entry",
           data: null,
         };
       }
 
-      // if (error.name === 'ValidationError') {
-      //   return {
-      //     statusCode: HttpStatus.BAD_REQUEST,
-      //     message: 'Validation error: ' + error.message,
-      //     data: null,
-      //   };
-      // }
-
-      // Generic server error
       return {
         statusCode: HttpStatus.INTERNAL_SERVER_ERROR,
-        message: 'An error occurred during signup',
+        message: "An error occurred during signup",
         data: null,
       };
     }
   }
 
-  async login(dto: LoginDto) {
+  async login(dto: CreateLoginDto) {
     try {
       const user = await this.userRespository.findUserByEmail(dto.email);
-      if (!user) {
+      if (!user || !user.password) {
         return {
           statusCode: HttpStatus.NOT_FOUND,
-          message: 'user not found',
+          message: "user not found",
           data: null,
         };
       }
       const isPasswordValid = await comparePassword(
         dto.password,
-        user.password,
+        user.password
       );
       if (!isPasswordValid) {
         return {
           statusCode: HttpStatus.UNAUTHORIZED,
-          message: 'invalid password',
+          message: "invalid password",
           data: null,
         };
       }
@@ -150,7 +121,7 @@ export class AuthService {
       const token = await this.jwt.signAsync(payload);
       return {
         statusCode: HttpStatus.OK,
-        message: 'login successful',
+        message: "login successful",
         data: {
           id: user.id,
           userName: user.username,
@@ -158,15 +129,15 @@ export class AuthService {
         token: token,
       };
     } catch (error) {
-      console.log('Error in login:', error);
-      throw new Error('Error during login');
+      console.log("Error in login:", error);
+      throw new Error("Error during login");
     }
   }
 
-  async validateOTP(dto: OTPDto) {
+  async validateOTP(dto: CreateOTPDto) {
     const user = await this.userRespository.findUserByEmail(dto.email);
     if (!user) {
-      throw new NotFoundException('User not found');
+      throw new NotFoundException("User not found");
     }
 
     // Validate OTP
@@ -185,7 +156,7 @@ export class AuthService {
 
     return {
       statusCode: HttpStatus.OK,
-      message: 'User verified successfully',
+      message: "User verified successfully",
       data: {
         id: user.id,
         userName: user.username,
@@ -193,12 +164,12 @@ export class AuthService {
       token: token,
     };
   }
-  async resendOTP(dto: ResendDto) {
+  async resendOTP(dto: ResendOTPDto) {
     const user = await this.userRespository.findUserByEmail(dto.email);
     if (!user) {
       return {
         statusCode: HttpStatus.NOT_FOUND,
-        message: 'user not found',
+        message: "user not found",
         data: null,
       };
     }
@@ -206,7 +177,7 @@ export class AuthService {
     const otp = await this.otp.generateOTP(user.email);
 
     const data = {
-      subject: 'InnkeeperPro validation',
+      subject: "InnkeeperPro validation",
       username: user.username,
       OTP: otp,
     };
@@ -215,7 +186,7 @@ export class AuthService {
 
     return {
       statusCode: HttpStatus.CREATED,
-      message: 'OTP Send',
+      message: "OTP Send",
     };
   }
 }

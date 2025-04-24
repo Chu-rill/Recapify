@@ -1,34 +1,45 @@
-import { Controller, Get, Post, Body, Patch, Param, Delete } from '@nestjs/common';
-import { UserService } from './user.service';
-import { CreateUserDto } from './dto/create-user.dto';
-import { UpdateUserDto } from './dto/update-user.dto';
+import {
+  Controller,
+  Get,
+  Post,
+  Body,
+  Param,
+  Delete,
+  Query,
+  UseGuards,
+  Req,
+  UseInterceptors,
+  UploadedFile,
+} from "@nestjs/common";
+import { UserService } from "./user.service";
+import { AuthGuard } from "src/guard/auth.guard";
+import { AuthRequest } from "src/types/auth.request";
+import { FileInterceptor } from "@nestjs/platform-express";
 
-@Controller('user')
+@UseGuards(AuthGuard)
+@Controller("users")
 export class UserController {
   constructor(private readonly userService: UserService) {}
 
-  @Post()
-  create(@Body() createUserDto: CreateUserDto) {
-    return this.userService.create(createUserDto);
-  }
-
   @Get()
-  findAll() {
-    return this.userService.findAll();
+  async findOne(@Req() req: AuthRequest) {
+    const id = req.user.id;
+    return this.userService.getUser(id);
   }
 
-  @Get(':id')
-  findOne(@Param('id') id: string) {
-    return this.userService.findOne(+id);
+  @Delete()
+  async remove(@Req() req: AuthRequest) {
+    const userId = req.user.id;
+    return this.userService.remove(userId);
   }
 
-  @Patch(':id')
-  update(@Param('id') id: string, @Body() updateUserDto: UpdateUserDto) {
-    return this.userService.update(+id, updateUserDto);
-  }
-
-  @Delete(':id')
-  remove(@Param('id') id: string) {
-    return this.userService.remove(+id);
-  }
+  // @Post('/profile')
+  // @UseInterceptors(FileInterceptor('file'))
+  // async uploadImage(
+  //   @UploadedFile() file: Express.Multer.File,
+  //   @Req() req: AuthRequest,
+  // ) {
+  //   const userId = req.user?.id;
+  //   return this.userService.uploadProfileImage(userId, file);
+  // }
 }
