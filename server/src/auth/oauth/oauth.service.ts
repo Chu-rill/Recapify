@@ -1,18 +1,18 @@
-import { HttpStatus, Injectable, UnauthorizedException } from '@nestjs/common';
-import { JwtService } from '@nestjs/jwt';
-import { UserRepository } from 'src/user/user.repository';
+import { HttpStatus, Injectable, UnauthorizedException } from "@nestjs/common";
+import { JwtService } from "@nestjs/jwt";
+import { UserRepository } from "src/user/user.repository";
 
 @Injectable()
 export class OauthService {
   constructor(
     private jwt: JwtService,
-    private userRepository: UserRepository,
+    private userRepository: UserRepository
   ) {}
 
   async validateOAuthGoogleLogin(req): Promise<any> {
     if (!req || !req.user) {
-      console.log('Google login failed:', req);
-      throw new UnauthorizedException('No user from Google');
+      console.log("Google login failed:", req);
+      throw new UnauthorizedException("No user from Google");
     }
 
     const auth = {
@@ -29,9 +29,9 @@ export class OauthService {
         auth.firstName,
         auth.lastName,
         auth.email,
-        auth.picture,
+        auth.picture
       );
-      await this.userRepository.createCustomer(user.id);
+
       await this.userRepository.verifyUser(user.email);
     }
 
@@ -40,7 +40,7 @@ export class OauthService {
 
     return {
       statusCode: HttpStatus.OK,
-      message: 'Google Auth Successful',
+      message: "Google Auth Successful",
       data: user,
       token: token,
     };
