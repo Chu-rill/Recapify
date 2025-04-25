@@ -24,7 +24,10 @@ export class MailService {
       },
     });
 
-    this.welcomeTemplatePath = path.join(__dirname, "../../views/welcome.hbs");
+    this.welcomeTemplatePath = path.join(
+      process.cwd(),
+      "src/views/welcome.hbs"
+    );
   }
 
   // Method to read the email template file based on a path

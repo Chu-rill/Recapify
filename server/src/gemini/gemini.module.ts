@@ -1,0 +1,12 @@
+import { Module } from "@nestjs/common";
+import { GeminiService } from "./gemini.service";
+import { GeminiController } from "./gemini.controller";
+import { ConfigModule } from "@nestjs/config";
+import { DatabaseModule } from "src/infra/db/database.module";
+
+@Module({
+  imports: [ConfigModule, DatabaseModule],
+  controllers: [GeminiController],
+  providers: [GeminiService],
+})
+export class GeminiModule {}

@@ -7,6 +7,8 @@ import { EmailAndPasswordAuthModule } from "./auth/email-and-password-auth/email
 import { DatabaseModule } from "./infra/db/database.module";
 import { OauthModule } from "./auth/oauth/oauth.module";
 import { OtpModule } from "./otp/otp.module";
+import { GeminiModule } from './gemini/gemini.module';
+import { DocumentModule } from './document/document.module';
 
 @Module({
   imports: [
@@ -19,6 +21,8 @@ import { OtpModule } from "./otp/otp.module";
     DatabaseModule,
     OauthModule,
     OtpModule,
+    GeminiModule,
+    DocumentModule,
   ],
   controllers: [AppController],
   providers: [AppService],
