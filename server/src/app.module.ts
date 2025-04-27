@@ -9,6 +9,7 @@ import { OauthModule } from "./auth/oauth/oauth.module";
 import { OtpModule } from "./otp/otp.module";
 import { GeminiModule } from './gemini/gemini.module';
 import { DocumentModule } from './document/document.module';
+import { SummaryModule } from './summary/summary.module';
 
 @Module({
   imports: [
@@ -23,6 +24,7 @@ import { DocumentModule } from './document/document.module';
     OtpModule,
     GeminiModule,
     DocumentModule,
+    SummaryModule,
   ],
   controllers: [AppController],
   providers: [AppService],

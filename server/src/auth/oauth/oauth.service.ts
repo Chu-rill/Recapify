@@ -1,12 +1,14 @@
 import { HttpStatus, Injectable, UnauthorizedException } from "@nestjs/common";
 import { JwtService } from "@nestjs/jwt";
+import { MailService } from "src/infra/mail/mail.service";
 import { UserRepository } from "src/user/user.repository";
 
 @Injectable()
 export class OauthService {
   constructor(
     private jwt: JwtService,
-    private userRepository: UserRepository
+    private userRepository: UserRepository,
+    private mailService: MailService
   ) {}
 
   async validateOAuthGoogleLogin(req): Promise<any> {
@@ -33,9 +35,14 @@ export class OauthService {
       );
 
       await this.userRepository.verifyUser(user.email);
+      const data = {
+        subject: "Recapify validation",
+        username: user.username,
+      };
+      await this.mailService.sendOauthEmail(user.email, data);
     }
 
-    const payload = { id: user.id, username: user.username };
+    const payload = { id: user.id, username: user.username, role: user.role };
     const token = await this.jwt.signAsync(payload);
 
     return {
