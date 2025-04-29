@@ -43,12 +43,9 @@ model Otp {
 
 model Document {
   id               String           @id @default(cuid())
-  title            String
   fileName         String
   fileUrl          String
-  fileSize         Int // size in bytes
   fileType         String // e.g., "application/pdf"
-  pageCount        Int?
   uploadedAt       DateTime         @default(now())
   processedAt      DateTime?
   processingStatus ProcessingStatus @default(PENDING)

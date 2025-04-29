@@ -1,3 +1,4 @@
+import { ProcessingStatus } from "@generated/prisma";
 import { Injectable } from "@nestjs/common";
 import { PrismaService } from "src/infra/db/prisma.service";
 
@@ -6,23 +7,19 @@ export class DocumentRepository {
   constructor(private readonly prisma: PrismaService) {}
 
   async createDocument(
-    title: string,
     fileName: string,
     fileUrl: string,
-    fileSize: number,
     fileType: string,
     userId: string,
-    pageCount?: number
+    processingStatus: ProcessingStatus
   ) {
     const document = await this.prisma.document.create({
       data: {
-        title,
         fileName,
         fileUrl,
-        fileSize,
         fileType,
         userId,
-        pageCount,
+        processingStatus,
       },
     });
     return document;
