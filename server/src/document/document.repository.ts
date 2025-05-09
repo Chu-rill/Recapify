@@ -9,6 +9,7 @@ export class DocumentRepository {
   async createDocument(
     fileName: string,
     fileUrl: string,
+    public_id: string,
     fileType: string,
     userId: string,
     processingStatus: ProcessingStatus
@@ -17,6 +18,7 @@ export class DocumentRepository {
       data: {
         fileName,
         fileUrl,
+        public_id,
         fileType,
         userId,
         processingStatus,

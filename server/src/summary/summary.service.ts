@@ -3,34 +3,37 @@ import { Injectable } from "@nestjs/common";
 import { GeminiService } from "src/gemini/gemini.service";
 import { SummaryRepository } from "./summary.repository";
 import { PdfService } from "src/document/pdf.service";
+import { DocumentRepository } from "src/document/document.repository";
+import { DocumentService } from "src/document/document.service";
 
 @Injectable()
 export class SummaryService {
   constructor(
     private summaryRepository: SummaryRepository,
+    private documentRepository: DocumentRepository,
+    private documentService: DocumentService,
     private pdfService: PdfService,
     private geminiService: GeminiService
   ) {}
 
   async generateSummary(documentId: string): Promise<void> {
     // Get document from database
-    const document = await this.prisma.document.findUnique({
-      where: { id: documentId },
-    });
+    const document = await this.documentRepository.findDocumentById(documentId);
 
     if (!document) {
       throw new Error(`Document not found: ${documentId}`);
     }
 
     try {
-      // Extract text from PDF
-      const pdfText = await this.pdfService.extractText(document.fileUrl);
+      const extractedText = await this.documentService.extractText(
+        document.public_id
+      );
 
       // Generate summary using Google Gemini
       const promptTemplate = `
         Please create a comprehensive summary of the following document:
         
-        ${pdfText.substring(0, 100000)} // Take first 100k chars to respect token limits
+        ${extractedText.substring(0, 100000)} // Take first 100k chars to respect token limits
         
         Provide:
         1. A concise overall summary

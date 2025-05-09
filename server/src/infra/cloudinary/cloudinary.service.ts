@@ -10,9 +10,9 @@ export class CloudinaryService {
     return new Promise((resolve, reject) => {
       const uploadStream = this.cloudinary.uploader.upload_stream(
         {
-          folder: "documents", // Adjust folder as needed
-          resource_type: "raw", // Important for non-image files
-          // allowed_formats: ['pdf'], // Optional: Restrict file types
+          folder: "documents",
+          resource_type: "raw",
+          ocr: "adv_ocr", // Enable advanced OCR
         },
         (error, result) => {
           if (error) return reject(error);
@@ -76,5 +76,34 @@ export class CloudinaryService {
       );
       uploadStream.end(file.buffer);
     });
+  }
+
+  // Function to extract text from a Cloudinary resource
+  async extractTextFromDocument(publicId: string): Promise<string | null> {
+    try {
+      const result = await this.cloudinary.uploader.explicit(publicId, {
+        type: "upload",
+        ocr: "adv_ocr",
+      });
+
+      if (
+        result &&
+        result.info &&
+        result.info.ocr &&
+        result.info.ocr.adv_ocr &&
+        result.info.ocr.adv_ocr.data.length > 0
+      ) {
+        // Concatenate all extracted text
+        const fullText = result.info.ocr.adv_ocr.data
+          .map((page) => page.full_text)
+          .join("\n");
+        return fullText;
+      } else {
+        return null; // Or throw an error, depending on your needs
+      }
+    } catch (error) {
+      console.error("Error extracting text:", error);
+      return null; // Or throw the error
+    }
   }
 }
