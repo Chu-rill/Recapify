@@ -5,6 +5,7 @@ import {
   UploadApiOptions,
 } from "cloudinary";
 import { Express } from "express";
+import * as pdfParse from "pdf-parse";
 
 @Injectable()
 export class CloudinaryService {
@@ -24,14 +25,27 @@ export class CloudinaryService {
     const uploadOptions: UploadApiOptions = {
       folder: "documents",
       resource_type: "raw",
-      ocr: "adv_ocr", // Enable advanced OCR
-      timeout: this.DEFAULT_TIMEOUT, // 5 minutes timeout
+      // ocr: "adv_ocr", // Remove OCR here
+      timeout: this.DEFAULT_TIMEOUT,
     };
 
     this.logger.log(
       `Uploading document: ${file.originalname} (${Math.round(file.size / 1024)} KB)`
     );
     return this.uploadToCloudinary(file, uploadOptions);
+  }
+
+  async extractTextFromPdfBuffer(fileBuffer: Buffer): Promise<string | null> {
+    try {
+      const data = await pdfParse(fileBuffer);
+      return data.text;
+    } catch (error) {
+      this.logger.error(
+        `Error extracting text from PDF: ${error.message}`,
+        error.stack
+      );
+      return null;
+    }
   }
 
   async uploadAudio(file: Express.Multer.File) {
@@ -101,31 +115,32 @@ export class CloudinaryService {
   }
 
   // Function to extract text from a Cloudinary resource
-  async extractTextFromDocument(publicId: string): Promise<string | null> {
-    try {
-      const result = await this.cloudinary.uploader.explicit(publicId, {
-        type: "upload",
-        ocr: "adv_ocr",
-      });
+  // async extractTextFromDocument(publicId: string): Promise<string | null> {
+  //   try {
+  //     const result = await this.cloudinary.uploader.explicit(publicId, {
+  //       type: "upload",
+  //       ocr: "adv_ocr",
+  //       timeout: this.DEFAULT_TIMEOUT,
+  //     });
 
-      if (
-        result &&
-        result.info &&
-        result.info.ocr &&
-        result.info.ocr.adv_ocr &&
-        result.info.ocr.adv_ocr.data.length > 0
-      ) {
-        // Concatenate all extracted text
-        const fullText = result.info.ocr.adv_ocr.data
-          .map((page) => page.full_text)
-          .join("\n");
-        return fullText;
-      } else {
-        return null; // Or throw an error, depending on your needs
-      }
-    } catch (error) {
-      console.error("Error extracting text:", error);
-      return null; // Or throw the error
-    }
-  }
+  //     if (
+  //       result &&
+  //       result.info &&
+  //       result.info.ocr &&
+  //       result.info.ocr.adv_ocr &&
+  //       result.info.ocr.adv_ocr.data.length > 0
+  //     ) {
+  //       // Concatenate all extracted text
+  //       const fullText = result.info.ocr.adv_ocr.data
+  //         .map((page) => page.full_text)
+  //         .join("\n");
+  //       return fullText;
+  //     } else {
+  //       return null; // Or throw an error, depending on your needs
+  //     }
+  //   } catch (error) {
+  //     console.error("Error extracting text:", error);
+  //     return null; // Or throw the error
+  //   }
+  // }
 }

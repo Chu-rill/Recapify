@@ -8,19 +8,17 @@ export class DocumentRepository {
 
   async createDocument(
     fileName: string,
-    fileUrl: string,
-    public_id: string,
     fileType: string,
     userId: string,
+    extractedText: string,
     processingStatus: ProcessingStatus
   ) {
     const document = await this.prisma.document.create({
       data: {
         fileName,
-        fileUrl,
-        public_id,
         fileType,
         userId,
+        extractedText,
         processingStatus,
       },
     });
@@ -50,5 +48,16 @@ export class DocumentRepository {
     return this.prisma.document.delete({
       where: { id },
     });
+  }
+
+  async getExtractedText(id: string): Promise<string> {
+    const document = await this.prisma.document.findUnique({
+      where: { id },
+      select: { extractedText: true },
+    });
+    if (!document) {
+      return "No document";
+    }
+    return document.extractedText;
   }
 }

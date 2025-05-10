@@ -44,11 +44,10 @@ model Otp {
 model Document {
   id               String           @id @default(cuid())
   fileName         String
-  fileUrl          String
-  public_id        String
   fileType         String // e.g., "application/pdf"
   uploadedAt       DateTime         @default(now())
   processedAt      DateTime?
+  extractedText    String
   processingStatus ProcessingStatus @default(PENDING)
   userId           String
   user             User             @relation(fields: [userId], references: [id], onDelete: Cascade)

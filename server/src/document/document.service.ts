@@ -12,34 +12,24 @@ export class DocumentService {
   ) {}
 
   async uploadDocument(file: Express.Multer.File, userId: string) {
-    if (!file) {
-      return {
-        status: "error",
-        error: true,
-        statusCode: 400,
-        message: "No file uploaded",
-      };
-    }
-
-    this.logger.log(
-      `Starting document upload for user ${userId}: ${file.originalname}`
-    );
     try {
-      // Upload file to Cloudinary
-      const cloudinaryResponse =
-        await this.cloudinaryService.uploadDocument(file);
+      this.logger.log(`Processing document upload: ${file.originalname}`);
 
-      if (!cloudinaryResponse) {
-        throw new Error("Document upload failed.");
+      // Extract text from the PDF buffer
+      const extractedText =
+        await this.cloudinaryService.extractTextFromPdfBuffer(file.buffer);
+
+      if (!extractedText) {
+        this.logger.error("Failed to extract text from document .");
+        throw new Error("Failed to extract text from document.");
       }
 
       // Save document metadata to database
       const document = await this.documentRepository.createDocument(
         file.originalname,
-        cloudinaryResponse.secure_url,
-        cloudinaryResponse.public_id,
         file.mimetype,
         userId,
+        extractedText,
         ProcessingStatus.PROCESSING
       );
 
@@ -51,10 +41,10 @@ export class DocumentService {
         statusCode: 200,
         data: {
           id: document.id,
-          public_id: cloudinaryResponse.public_id,
-          filename: file.originalname,
-          fileType: file.mimetype,
-          uploadedAt: document.uploadedAt,
+          name: document.fileName,
+          fileType: document.fileType,
+          userId: document.userId,
+          createdAt: document.uploadedAt,
         },
         message: "Document uploaded successfully",
       };
@@ -64,38 +54,26 @@ export class DocumentService {
         error.stack
       );
 
-      // Create more specific error responses based on the error type
-      if (error.http_code === 413) {
-        throw new BadRequestException("File too large for upload");
-      } else if (error.http_code === 415) {
-        throw new BadRequestException("Unsupported file type");
-      } else if (error.http_code === 429) {
-        throw new BadRequestException(
-          "Upload rate limit exceeded, please try again later"
-        );
-      } else if (error.http_code) {
-        throw new BadRequestException(`Upload error: ${error.message}`);
-      }
       throw error; // Re-throw the error to be handled by the controller
     }
   }
 
-  async extractText(public_id: string) {
+  async extractText(documentId: string) {
     try {
-      if (!public_id) {
+      if (!documentId) {
         return {
           status: "error",
           error: true,
           statusCode: 400,
-          message: "Missing document public_id",
+          message: "Missing document documentId",
         };
       }
-      this.logger.log(`Starting text extraction for document: ${public_id}`);
+      this.logger.log(`Starting text extraction for document: ${documentId}`);
       const extractedText =
-        await this.cloudinaryService.extractTextFromDocument(public_id);
+        await this.documentRepository.getExtractedText(documentId);
       if (!extractedText) {
         this.logger.warn(
-          `No text could be extracted from document: ${public_id}`
+          `No text could be extracted from document: ${documentId}`
         );
         return {
           status: "error",
@@ -105,7 +83,7 @@ export class DocumentService {
         };
       }
       this.logger.log(
-        `Text extraction successful for: ${public_id} (${extractedText.length} characters)`
+        `Text extraction successful for: ${documentId} (${extractedText.length} characters)`
       );
       return {
         status: "success",
@@ -116,7 +94,7 @@ export class DocumentService {
     } catch (error) {
       // Log the error for debugging
       this.logger.error(
-        `Text extraction failed for ${public_id}: ${error.message}`
+        `Text extraction failed for ${documentId}: ${error.message}`
       );
 
       // Return error response

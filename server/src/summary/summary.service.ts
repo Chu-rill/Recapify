@@ -18,19 +18,8 @@ export class SummaryService {
   async generateSummary(documentId: string) {
     this.logger.log(`Starting summary generation for document: ${documentId}`);
 
-    // Get document from database
-    const document = await this.documentRepository.findDocumentById(documentId);
-
-    if (!document) {
-      this.logger.warn(`Document not found: ${documentId}`);
-      throw new Error(`Document not found: ${documentId}`);
-    }
-
     try {
-      this.logger.log(`Extracting text from document: ${document.public_id}`);
-      const extractedText = await this.documentService.extractText(
-        document.public_id
-      );
+      const extractedText = await this.documentService.extractText(documentId);
 
       // If extraction failed, return the error
       if (extractedText.error) {
@@ -83,13 +72,25 @@ export class SummaryService {
 
       // Track time for summary generation
       const startTime = Date.now();
-      const summaryContent =
-        await this.geminiService.generateContent(promptTemplate);
+      const response = await this.geminiService.generateContent(promptTemplate);
       const generationTime = Date.now() - startTime;
+      const summaryContent =
+        response.candidates[0].content.text ||
+        response.candidates[0].content.parts[0].text;
 
       this.logger.log(
         `Summary generated successfully in ${generationTime}ms for document: ${documentId}`
       );
+
+      if (typeof summaryContent !== "string") {
+        console.log(`content: ${response.candidates[0].content}`);
+        console.log(summaryContent);
+        this.logger.error(
+          `Summary content is not a string: ${typeof summaryContent}`
+        );
+        // You might want to throw an error or return a default value here
+        throw new Error("Summary content is not a string");
+      }
 
       // Extract key points
       this.logger.debug(`Extracting key points from summary`);
@@ -106,12 +107,12 @@ export class SummaryService {
         summaryContent,
         shortSummary,
         keyPoints,
-        document.id
+        documentId
       );
 
       // Update document status
       this.logger.log(`Updating document status to COMPLETED: ${documentId}`);
-      await this.documentRepository.updateDocument(document.id, {
+      await this.documentRepository.updateDocument(documentId, {
         processingStatus: "COMPLETED",
         processedAt: new Date(),
       });
@@ -127,10 +128,10 @@ export class SummaryService {
         statusCode: 200,
         data: {
           id: summary.id,
-          content: summaryContent,
+          // content: summaryContent,
           shortSummary: shortSummary,
           keyPoints: keyPoints,
-          documentId: document.id,
+          documentId: documentId,
           wasTruncated: wasTruncated,
           textLength: extractedText.text.length,
           processedAt: new Date(),
@@ -145,7 +146,7 @@ export class SummaryService {
 
       // Update document status to failed
       this.logger.warn(`Updating document status to FAILED: ${documentId}`);
-      await this.documentRepository.updateDocument(document.id, {
+      await this.documentRepository.updateDocument(documentId, {
         processingStatus: "FAILED",
       });
 
