@@ -10,6 +10,7 @@ import { OtpModule } from "./otp/otp.module";
 import { GeminiModule } from './gemini/gemini.module';
 import { DocumentModule } from './document/document.module';
 import { SummaryModule } from './summary/summary.module';
+import { AudioModule } from './audio/audio.module';
 
 @Module({
   imports: [
@@ -25,6 +26,7 @@ import { SummaryModule } from './summary/summary.module';
     GeminiModule,
     DocumentModule,
     SummaryModule,
+    AudioModule,
   ],
   controllers: [AppController],
   providers: [AppService],

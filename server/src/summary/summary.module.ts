@@ -10,6 +10,6 @@ import { DatabaseModule } from "src/infra/db/database.module";
   controllers: [SummaryController],
   providers: [SummaryService, SummaryRepository],
   imports: [DocumentModule, GeminiModule, DatabaseModule],
-  exports: [SummaryService],
+  exports: [SummaryService, SummaryRepository],
 })
 export class SummaryModule {}

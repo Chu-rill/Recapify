@@ -26,6 +26,20 @@ export class SummaryRepository {
       where: { documentId },
     });
   }
+  async findSummaryById(id: string) {
+    return this.prisma.summary.findUnique({
+      where: { id },
+      include: {
+        document: {
+          select: {
+            id: true,
+            fileName: true,
+            userId: true,
+          },
+        },
+      },
+    });
+  }
 
   async updateSummary(id: string, data: any) {
     return this.prisma.summary.update({
