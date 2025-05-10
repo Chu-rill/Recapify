@@ -8,5 +8,6 @@ import { DatabaseModule } from "src/infra/db/database.module";
   imports: [ConfigModule, DatabaseModule],
   controllers: [GeminiController],
   providers: [GeminiService],
+  exports: [GeminiService],
 })
 export class GeminiModule {}

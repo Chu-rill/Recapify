@@ -1,79 +1,101 @@
-import { Inject, Injectable } from "@nestjs/common";
-import { v2 as cloudinary, UploadApiResponse } from "cloudinary";
+import { Inject, Injectable, Logger } from "@nestjs/common";
+import {
+  v2 as cloudinary,
+  UploadApiResponse,
+  UploadApiOptions,
+} from "cloudinary";
 import { Express } from "express";
 
 @Injectable()
 export class CloudinaryService {
-  constructor(@Inject("CLOUDINARY") private cloudinary) {}
+  private readonly logger = new Logger(CloudinaryService.name);
+
+  // Default timeout increased to 5 minutes (300000ms)
+  private readonly DEFAULT_TIMEOUT = 300000;
+
+  constructor(@Inject("CLOUDINARY") private cloudinary) {
+    // Set global configuration for Cloudinary
+    this.cloudinary.config({
+      upload_timeout: this.DEFAULT_TIMEOUT,
+    });
+  }
 
   async uploadDocument(file: Express.Multer.File): Promise<UploadApiResponse> {
-    return new Promise((resolve, reject) => {
-      const uploadStream = this.cloudinary.uploader.upload_stream(
-        {
-          folder: "documents",
-          resource_type: "raw",
-          ocr: "adv_ocr", // Enable advanced OCR
-        },
-        (error, result) => {
-          if (error) return reject(error);
-          resolve(result);
-        }
-      );
-      uploadStream.end(file.buffer);
-    });
+    const uploadOptions: UploadApiOptions = {
+      folder: "documents",
+      resource_type: "raw",
+      ocr: "adv_ocr", // Enable advanced OCR
+      timeout: this.DEFAULT_TIMEOUT, // 5 minutes timeout
+    };
+
+    this.logger.log(
+      `Uploading document: ${file.originalname} (${Math.round(file.size / 1024)} KB)`
+    );
+    return this.uploadToCloudinary(file, uploadOptions);
   }
 
-  async uploadAudio(file: Express.Multer.File): Promise<UploadApiResponse> {
-    return new Promise((resolve, reject) => {
-      const uploadStream = this.cloudinary.uploader.upload_stream(
-        {
-          folder: "audios", // Adjust folder as needed
-          resource_type: "video", // Use 'video' for audio uploads
-          // allowed_formats: ['mp3', 'wav', 'ogg'], // Optional: Restrict file types
-        },
-        (error, result) => {
-          if (error) return reject(error);
-          resolve(result);
-        }
-      );
-      uploadStream.end(file.buffer);
-    });
+  async uploadAudio(file: Express.Multer.File) {
+    const uploadOptions: UploadApiOptions = {
+      folder: "audios",
+      resource_type: "video", // Use 'video' for audio uploads
+      timeout: this.DEFAULT_TIMEOUT,
+    };
+
+    this.logger.log(
+      `Uploading audio: ${file.originalname} (${Math.round(file.size / 1024)} KB)`
+    );
+    return this.uploadToCloudinary(file, uploadOptions);
   }
 
-  async uploadProfiles(file: Express.Multer.File): Promise<UploadApiResponse> {
-    return new Promise((resolve, reject) => {
-      const uploadStream = this.cloudinary.uploader.upload_stream(
-        {
-          folder: "profiles",
-          // width: 150,
-          // height: 150,
-          crop: "fill",
-          timeout: 60000,
-        }, // Adjust folder as needed
-        (error, result) => {
-          if (error) return reject(error);
-          resolve(result);
-        }
-      );
-      uploadStream.end(file.buffer);
-    });
+  async uploadProfiles(file: Express.Multer.File) {
+    const uploadOptions: UploadApiOptions = {
+      folder: "profiles",
+      crop: "fill",
+      timeout: this.DEFAULT_TIMEOUT,
+    };
+
+    this.logger.log(
+      `Uploading profile image: ${file.originalname} (${Math.round(file.size / 1024)} KB)`
+    );
+    return this.uploadToCloudinary(file, uploadOptions);
   }
 
-  async uploadImages(file: Express.Multer.File): Promise<UploadApiResponse> {
+  async uploadImages(file: Express.Multer.File) {
+    const uploadOptions: UploadApiOptions = {
+      folder: "room_images",
+      crop: "fill",
+      timeout: this.DEFAULT_TIMEOUT,
+    };
+
+    this.logger.log(
+      `Uploading room image: ${file.originalname} (${Math.round(file.size / 1024)} KB)`
+    );
+    return this.uploadToCloudinary(file, uploadOptions);
+  }
+
+  private uploadToCloudinary(
+    file: Express.Multer.File,
+    options: UploadApiOptions
+  ): Promise<UploadApiResponse> {
     return new Promise((resolve, reject) => {
+      const startTime = Date.now();
+
       const uploadStream = this.cloudinary.uploader.upload_stream(
-        {
-          folder: "room_images",
-          // width: 150,
-          // height: 150,
-          crop: "fill",
-          timeout: 60000,
-        }, // Adjust folder as needed
+        options,
         (error, result) => {
-          if (error) return reject(error);
+          if (error) {
+            this.logger.error(`Upload failed: ${error.message}`, error.stack);
+            return reject(error);
+          }
+
+          const uploadTime = Date.now() - startTime;
+          this.logger.log(
+            `Upload successful: ${result.public_id} (took ${uploadTime}ms)`
+          );
           resolve(result);
         }
       );
+
       uploadStream.end(file.buffer);
     });
   }

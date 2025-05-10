@@ -1,34 +1,29 @@
-import { Controller, Get, Post, Body, Patch, Param, Delete } from '@nestjs/common';
-import { SummaryService } from './summary.service';
-import { CreateSummaryDto } from './dto/create-summary.dto';
-import { UpdateSummaryDto } from './dto/update-summary.dto';
+import {
+  Controller,
+  Get,
+  Post,
+  Body,
+  Patch,
+  Param,
+  Delete,
+  UseGuards,
+} from "@nestjs/common";
+import { SummaryService } from "./summary.service";
+import { AuthGuard } from "src/guard/auth.guard";
 
-@Controller('summary')
+@UseGuards(AuthGuard)
+@Controller("summary")
 export class SummaryController {
   constructor(private readonly summaryService: SummaryService) {}
 
-  @Post()
-  create(@Body() createSummaryDto: CreateSummaryDto) {
-    return this.summaryService.create(createSummaryDto);
+  @Post(":documentId")
+  create(@Param("documentId") documentId: string) {
+    return this.summaryService.generateSummary(documentId);
   }
 
-  @Get()
-  findAll() {
-    return this.summaryService.findAll();
-  }
-
-  @Get(':id')
-  findOne(@Param('id') id: string) {
-    return this.summaryService.findOne(+id);
-  }
-
-  @Patch(':id')
-  update(@Param('id') id: string, @Body() updateSummaryDto: UpdateSummaryDto) {
-    return this.summaryService.update(+id, updateSummaryDto);
-  }
-
-  @Delete(':id')
-  remove(@Param('id') id: string) {
-    return this.summaryService.remove(+id);
+  // Get summary for a document
+  @Get(":documentId")
+  getSummary(@Param("documentId") documentId: string) {
+    return this.summaryService.getSummaryByDocumentId(documentId);
   }
 }

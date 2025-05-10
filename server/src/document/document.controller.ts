@@ -24,6 +24,6 @@ export class DocumentController {
     @Req() req: AuthRequest
   ) {
     const userId = req.user.id;
-    return this.documentService.processDocument(file, userId);
+    return this.documentService.uploadDocument(file, userId);
   }
 }
