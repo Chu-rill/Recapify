@@ -2,7 +2,6 @@
 import { Injectable } from "@nestjs/common";
 import { GeminiService } from "src/gemini/gemini.service";
 import { SummaryRepository } from "./summary.repository";
-import { PdfService } from "src/document/pdf.service";
 import { DocumentRepository } from "src/document/document.repository";
 import { DocumentService } from "src/document/document.service";
 
@@ -12,11 +11,10 @@ export class SummaryService {
     private summaryRepository: SummaryRepository,
     private documentRepository: DocumentRepository,
     private documentService: DocumentService,
-    private pdfService: PdfService,
     private geminiService: GeminiService
   ) {}
 
-  async generateSummary(documentId: string): Promise<void> {
+  async generateSummary(documentId: string) {
     // Get document from database
     const document = await this.documentRepository.findDocumentById(documentId);
 
@@ -29,17 +27,42 @@ export class SummaryService {
         document.public_id
       );
 
-      // Generate summary using Google Gemini
+      // If extraction failed, return the error
+      if (extractedText.error) {
+        return {
+          status: "error",
+          error: true,
+          statusCode: extractedText.statusCode,
+          message: extractedText.message,
+        };
+      }
+      if (!extractedText.text) {
+        return {
+          status: "error",
+          error: true,
+          statusCode: 404,
+          message: "extracted not found",
+        };
+      }
+
+      // Truncate text if needed to respect token limits
+      const MAX_CHARS = 1000000; //1 million
+      const textForSummary = extractedText.text.substring(0, MAX_CHARS);
+
+      // Check if text was truncated to inform user
+      const wasTruncated = extractedText.text.length > MAX_CHARS;
+
+      // Create prompt template for the AI model
       const promptTemplate = `
-        Please create a comprehensive summary of the following document:
-        
-        ${extractedText.substring(0, 100000)} // Take first 100k chars to respect token limits
-        
-        Provide:
-        1. A concise overall summary
-        2. Key points and insights
-        3. Important details to remember
-      `;
+      Please create a comprehensive summary of the following document:
+      
+      ${textForSummary}
+      
+      Provide:
+      1. A concise overall summary
+      2. Key points and insights
+      3. Important details to remember
+    `;
 
       const summaryContent =
         await this.geminiService.generateContent(promptTemplate);
@@ -47,29 +70,25 @@ export class SummaryService {
       // Extract key points (this is a simple method, you might want to use more sophisticated parsing)
       const keyPoints = this.extractKeyPoints(summaryContent);
 
+      const shortSummary = this.createShortSummary(summaryContent);
+
       // Save summary to database
-      await this.prisma.summary.create({
-        data: {
-          content: summaryContent,
-          shortSummary: this.createShortSummary(summaryContent),
-          keyPoints,
-          documentId: document.id,
-        },
-      });
+      const summary = await this.summaryRepository.createSummary(
+        summaryContent,
+        shortSummary,
+        keyPoints,
+        document.id
+      );
 
       // Update document status
-      await this.prisma.document.update({
-        where: { id: document.id },
-        data: {
-          processingStatus: "COMPLETED",
-          processedAt: new Date(),
-        },
+      await this.documentRepository.updateDocument(document.id, {
+        processingStatus: "COMPLETED",
+        processedAt: new Date(),
       });
     } catch (error) {
       // Update document status to failed
-      await this.prisma.document.update({
-        where: { id: document.id },
-        data: { processingStatus: "FAILED" },
+      await this.documentRepository.updateDocument(document.id, {
+        processingStatus: "FAILED",
       });
       throw error;
     }

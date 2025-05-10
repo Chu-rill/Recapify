@@ -37,7 +37,7 @@ export class DocumentService {
         cloudinaryResponse.public_id,
         file.mimetype,
         userId,
-        ProcessingStatus.COMPLETED
+        ProcessingStatus.PROCESSING
       );
 
       return {
@@ -84,9 +84,9 @@ export class DocumentService {
       };
     } catch (error) {
       // Log the error for debugging
-      this.logger.error(
-        `Text extraction failed for ${public_id}: ${error.message}`
-      );
+      // this.logger.error(
+      //   `Text extraction failed for ${public_id}: ${error.message}`
+      // );
 
       // Return error response
       return {
