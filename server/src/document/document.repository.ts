@@ -60,4 +60,10 @@ export class DocumentRepository {
     }
     return document.extractedText;
   }
+  async deleteExtractedText(id: string): Promise<void> {
+    await this.prisma.document.update({
+      where: { id },
+      data: { extractedText: "" },
+    });
+  }
 }

@@ -121,10 +121,10 @@ export class SummaryService {
         `Summary generation complete for document: ${documentId}`
       );
 
+      await this.documentRepository.deleteExtractedText(documentId);
       // Return the generated summary
       return {
-        status: "success",
-        error: false,
+        success: true,
         statusCode: 200,
         data: {
           id: summary.id,
