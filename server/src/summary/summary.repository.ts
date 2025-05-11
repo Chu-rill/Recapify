@@ -53,4 +53,18 @@ export class SummaryRepository {
       where: { id },
     });
   }
+
+  async findAllSummaries() {
+    return this.prisma.summary.findMany();
+  }
+
+  async findSummariesByUserId(userId: string) {
+    return this.prisma.summary.findMany({
+      where: {
+        document: {
+          userId: userId,
+        },
+      },
+    });
+  }
 }

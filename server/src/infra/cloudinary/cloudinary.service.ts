@@ -6,6 +6,8 @@ import {
 } from "cloudinary";
 import { Express } from "express";
 import * as pdfParse from "pdf-parse";
+import { Readable } from "stream";
+import * as path from "path";
 
 @Injectable()
 export class CloudinaryService {
@@ -58,7 +60,11 @@ export class CloudinaryService {
     this.logger.log(
       `Uploading audio: ${file.originalname} (${Math.round(file.size / 1024)} KB)`
     );
-    return this.uploadToCloudinary(file, uploadOptions);
+    return await this.uploadBufferToCloudinary(
+      file.buffer,
+      file.originalname,
+      uploadOptions.folder
+    );
   }
 
   async uploadProfiles(file: Express.Multer.File) {
@@ -111,6 +117,56 @@ export class CloudinaryService {
       );
 
       uploadStream.end(file.buffer);
+    });
+  }
+
+  /**
+   * Uploads a buffer directly to Cloudinary without creating a local file
+   */
+  async uploadBufferToCloudinary(
+    buffer: Buffer,
+    filename: string,
+    folder: string = "audios"
+  ) {
+    return new Promise<any>((resolve, reject) => {
+      const uploadOptions: UploadApiOptions = {
+        folder: folder,
+        resource_type: "auto" as const, // Automatically detect the file type
+        timeout: this.DEFAULT_TIMEOUT,
+        public_id: path.parse(filename).name, // Use the filename without extension as public_id
+      };
+
+      // Create a readable stream from the buffer
+      const stream = new Readable();
+      stream.push(buffer);
+      stream.push(null); // Signal the end of the stream
+
+      this.logger.debug(
+        `Uploading buffer to Cloudinary (${Math.round(buffer.length / 1024)} KB)`
+      );
+
+      // Upload the stream to Cloudinary
+      const cloudinaryStream = cloudinary.uploader.upload_stream(
+        uploadOptions,
+        (error, result) => {
+          if (error) {
+            this.logger.error(`Cloudinary upload error: ${error.message}`);
+            reject(error);
+            return;
+          }
+
+          if (!result) {
+            this.logger.error(`Cloudinary upload result is null`);
+            reject(new Error("Cloudinary upload result is null"));
+            return;
+          }
+
+          this.logger.debug(`Cloudinary upload complete: ${result.secure_url}`);
+          resolve(result);
+        }
+      );
+
+      stream.pipe(cloudinaryStream);
     });
   }
 

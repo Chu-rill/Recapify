@@ -43,6 +43,9 @@ export class AuthGuard implements CanActivate {
       if (!user) {
         throw new UnauthorizedException("User not found");
       }
+      if (!user.isVerified) {
+        throw new UnauthorizedException("Access denied. User not verified");
+      }
       request.user = user;
       return true;
     } catch (error) {

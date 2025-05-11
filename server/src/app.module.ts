@@ -11,6 +11,7 @@ import { GeminiModule } from './gemini/gemini.module';
 import { DocumentModule } from './document/document.module';
 import { SummaryModule } from './summary/summary.module';
 import { AudioModule } from './audio/audio.module';
+import { AdminModule } from './admin/admin.module';
 
 @Module({
   imports: [
@@ -27,6 +28,7 @@ import { AudioModule } from './audio/audio.module';
     DocumentModule,
     SummaryModule,
     AudioModule,
+    AdminModule,
   ],
   controllers: [AppController],
   providers: [AppService],

@@ -66,4 +66,14 @@ export class DocumentRepository {
       data: { extractedText: "" },
     });
   }
+
+  async findAllDocument() {
+    return this.prisma.document.findMany();
+  }
+
+  async findDocumentByUserId(userId: string) {
+    return this.prisma.document.findMany({
+      where: { userId },
+    });
+  }
 }

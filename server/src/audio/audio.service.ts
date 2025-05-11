@@ -6,6 +6,8 @@ import * as util from "util";
 import * as path from "path";
 import axios from "axios";
 import { ConfigService } from "@nestjs/config";
+import { CloudinaryService } from "src/infra/cloudinary/cloudinary.service";
+import { AudioRepository } from "./audio.repository";
 
 @Injectable()
 export class AudioService {
@@ -16,6 +18,8 @@ export class AudioService {
   constructor(
     private prisma: PrismaService,
     private configService: ConfigService,
+    private cloudinaryService: CloudinaryService,
+    private audioRepository: AudioRepository,
     private summaryRepository: SummaryRepository
   ) {
     this.elevenLabsApiKey =
@@ -56,16 +60,6 @@ export class AudioService {
       `Found summary with document: ${summary.document.fileName}`
     );
 
-    const outputDir = "./uploads/audio";
-    if (!fs.existsSync(outputDir)) {
-      this.logger.debug(`Creating output directory: ${outputDir}`);
-      fs.mkdirSync(outputDir, { recursive: true });
-    }
-
-    const fileName = `${Date.now()}-${summary.document.fileName}.mp3`;
-    const outputFile = path.join(outputDir, fileName);
-    this.logger.debug(`Output file will be: ${outputFile}`);
-
     try {
       // Split long text into chunks (ElevenLabs has a limit of ~4096 tokens)
       this.logger.debug(`Splitting text into chunks with max length: 4000`);
@@ -101,40 +95,43 @@ export class AudioService {
       const combinedBuffer = Buffer.concat(audioBuffers);
       this.logger.debug(`Combined audio size: ${combinedBuffer.length} bytes`);
 
-      // Write to file
-      this.logger.debug(`Writing audio to file: ${outputFile}`);
-      const writeFile = util.promisify(fs.writeFile);
-      await writeFile(outputFile, combinedBuffer);
+      // Generate a filename for the audio
+      const fileName = `${Date.now()}-${summary.document.fileName}.mp3`;
 
-      // Get file size
-      const stats = fs.statSync(outputFile);
-      this.logger.debug(
-        `Audio file created: ${outputFile}, size: ${stats.size} bytes`
-      );
+      // Upload audio to Cloudinary
+      this.logger.debug(`Uploading audio to Cloudinary`);
+      const cloudinaryResult =
+        await this.cloudinaryService.uploadBufferToCloudinary(
+          combinedBuffer,
+          fileName
+        );
 
       // Estimate duration (mp3 bitrate is typically around 32kbps for speech)
-      const estimatedDuration = Math.floor(stats.size / 4000); // Rough estimate in seconds
+      const estimatedDuration = Math.floor(combinedBuffer.length / 4000); // Rough estimate in seconds
 
       // Create audio track record
       this.logger.log(`Creating audio track record in database`);
-      const audioTrack = await this.prisma.audioTrack.create({
-        data: {
-          title: `${summary.document.fileName} - Audio Summary`,
-          duration: estimatedDuration,
-          fileUrl: `audio/${fileName}`,
-          fileSize: stats.size,
-          format: "mp3",
-          voiceType: voiceType, // Store the original voice type name for consistency
-          documentId: summary.document.id,
-          summaryId: summary.id,
-          userId: summary.document.userId,
-        },
-      });
+      const audioTrack = await this.audioRepository.createAudio(
+        `${summary.document.fileName} - Audio Summary`,
+        estimatedDuration,
+        cloudinaryResult.secure_url,
+        combinedBuffer.length,
+        "mp3",
+        voiceType, // Store the original voice type name for consistency
+        summary.document.id,
+        summary.id,
+        summary.document.userId
+      );
 
       this.logger.log(
         `Audio generation complete for summary: ${summaryId}, created audioTrack: ${audioTrack.id}`
       );
-      return audioTrack;
+      return {
+        success: true,
+        statusCode: 200,
+        data: audioTrack,
+        message: "Audio generated successfully",
+      };
     } catch (error) {
       this.logger.error(
         `Error generating audio for summary ${summaryId}: ${error.message}`,
@@ -142,6 +139,45 @@ export class AudioService {
       );
       throw new Error(`Error generating audio: ${error.message}`);
     }
+  }
+
+  async getAudioById(id: string) {
+    this.logger.log(`Fetching audio by ID: ${id}`);
+    const audio = await this.audioRepository.findAudioById(id);
+    if (!audio) {
+      this.logger.warn(`Audio not found: ${id}`);
+      throw new Error(`Audio not found: ${id}`);
+    }
+    return {
+      success: true,
+      statusCode: 200,
+      data: audio,
+      message: "Audio retrieved successfully",
+    };
+  }
+
+  async getAudiosByUserId(userId: string) {
+    this.logger.log(`Fetching audios for user ID: ${userId}`);
+    const audios = await this.audioRepository.findAudiosByUserId(userId);
+    if (!audios || audios.length === 0) {
+      this.logger.warn(`No audios found for user ID: ${userId}`);
+      throw new Error(`No audios found for user ID: ${userId}`);
+    }
+    return {
+      success: true,
+      statusCode: 200,
+      data: audios,
+      message: "Audios retrieved successfully",
+    };
+  }
+  async getAudios() {
+    const audios = await this.audioRepository.findAllAudios();
+    return {
+      success: true,
+      statusCode: 200,
+      data: audios,
+      message: "Audios retrieved successfully",
+    };
   }
 
   private async synthesizeSpeechWithElevenLabs(

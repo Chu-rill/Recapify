@@ -128,7 +128,7 @@ export class SummaryService {
         statusCode: 200,
         data: {
           id: summary.id,
-          // content: summaryContent,
+          content: summaryContent,
           shortSummary: shortSummary,
           keyPoints: keyPoints,
           documentId: documentId,
@@ -218,5 +218,26 @@ export class SummaryService {
         message: `Error retrieving summary: ${error.message}`,
       };
     }
+  }
+
+  async findAllSummaries() {
+    const summaries = await this.summaryRepository.findAllSummaries();
+    return {
+      success: true,
+      statusCode: 200,
+      data: summaries,
+      message: "Summaries retrieved successfully",
+    };
+  }
+
+  async findAllSummariesByUserId(userId: string) {
+    const summaries =
+      await this.summaryRepository.findSummariesByUserId(userId);
+    return {
+      success: true,
+      statusCode: 200,
+      data: summaries,
+      message: "Summaries retrieved successfully",
+    };
   }
 }
