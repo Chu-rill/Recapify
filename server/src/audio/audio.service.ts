@@ -10,7 +10,7 @@ import { ConfigService } from "@nestjs/config";
 @Injectable()
 export class AudioService {
   private readonly logger = new Logger(AudioService.name);
-  private readonly elevenLabsApiKey: string | undefined;
+  private readonly elevenLabsApiKey: string;
   private readonly elevenLabsBaseUrl = "https://api.elevenlabs.io/v1";
 
   constructor(
@@ -19,16 +19,30 @@ export class AudioService {
     private summaryRepository: SummaryRepository
   ) {
     this.elevenLabsApiKey =
-      this.configService.get<string>("ELEVENLABS_API_KEY");
+      this.configService.get<string>("ELEVENLABS_API_KEY") ?? "";
     if (!this.elevenLabsApiKey) {
       this.logger.warn("ELEVENLABS_API_KEY not set in environment variables");
     }
     this.logger.log("AudioService initialized with ElevenLabs");
   }
 
-  async generateAudio(summaryId: string, voiceId: string) {
+  async generateAudio(summaryId: string, voiceType: string) {
+    // Map Google voice types to ElevenLabs voice IDs
+    const voiceMap = {
+      "en-US-Neural2-F": "21m00Tcm4TlvDq8ikWAM", // Rachel
+      "en-US-Neural2-C": "AZnzlk1XvdvUeBnXmlld", // Domi
+      "en-US-Neural2-A": "EXAVITQu4vr4xnSDxMaL", // Adam
+      "en-US-Neural2-J": "VR6AewLTigWG4xSOukaG", // Arnold
+      "en-US-Studio-O": "pNInz6obpgDQGcFmaJgB", // Josh
+      "en-US-Wavenet-J": "yoZ06aMxZJJ28mfd3POQ", // Bella
+      // Add more mappings as needed
+    };
+
+    // Get ElevenLabs voice ID or use default if not found
+    const voiceId = voiceMap[voiceType] || "21m00Tcm4TlvDq8ikWAM"; // Default to Rachel if voice not found
+
     this.logger.log(
-      `Starting audio generation for summary: ${summaryId} with voice ID: ${voiceId}`
+      `Starting audio generation for summary: ${summaryId} with voice: ${voiceType} (ElevenLabs ID: ${voiceId})`
     );
 
     const summary = await this.summaryRepository.findSummaryById(summaryId);
@@ -110,7 +124,7 @@ export class AudioService {
           fileUrl: `audio/${fileName}`,
           fileSize: stats.size,
           format: "mp3",
-          voiceType: voiceId,
+          voiceType: voiceType, // Store the original voice type name for consistency
           documentId: summary.document.id,
           summaryId: summary.id,
           userId: summary.document.userId,
@@ -142,6 +156,9 @@ export class AudioService {
       // ElevenLabs text-to-speech endpoint
       const url = `${this.elevenLabsBaseUrl}/text-to-speech/${voiceId}`;
 
+      // Log request details for debugging (remove sensitive info)
+      this.logger.debug(`Calling ElevenLabs API at: ${url}`);
+
       const response = await axios({
         method: "post",
         url,
@@ -172,9 +189,24 @@ export class AudioService {
         this.logger.error(
           `ElevenLabs API error status: ${error.response.status}`
         );
-        this.logger.error(
-          `ElevenLabs API error data: ${JSON.stringify(error.response.data)}`
-        );
+
+        // Try to parse the error data if it's a Buffer
+        if (error.response.data && error.response.data.type === "Buffer") {
+          try {
+            const errorText = Buffer.from(error.response.data.data).toString(
+              "utf8"
+            );
+            this.logger.error(`ElevenLabs API error details: ${errorText}`);
+          } catch (parseError) {
+            this.logger.error(
+              `ElevenLabs API error data: ${JSON.stringify(error.response.data)}`
+            );
+          }
+        } else {
+          this.logger.error(
+            `ElevenLabs API error data: ${JSON.stringify(error.response.data)}`
+          );
+        }
       }
 
       throw new Error(
