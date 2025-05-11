@@ -263,9 +263,9 @@ export class AudioService {
 
       // Log request details for debugging (remove sensitive info)
       this.logger.debug(`Calling UnrealSpeech API at: ${url}`);
-      this.logger.debug(
-        `UnrealSpeech API Request Data: ${JSON.stringify(requestData)}`
-      ); // LOG THE REQUEST!
+      // this.logger.debug(
+      //   `UnrealSpeech API Request Data: ${JSON.stringify(requestData)}`
+      // ); // LOG THE REQUEST!
 
       const response = await axios({
         method: "post",
