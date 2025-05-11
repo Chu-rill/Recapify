@@ -9,11 +9,24 @@ import { ConfigService } from "@nestjs/config";
 import { CloudinaryService } from "src/infra/cloudinary/cloudinary.service";
 import { AudioRepository } from "./audio.repository";
 
+interface UnrealSpeechResponse {
+  SynthesisTask?: {
+    // Make SynthesisTask optional in case the API returns a different structure on error
+    CreationTime: string;
+    OutputUri: string;
+    RequestCharacters: number;
+    TaskId: string;
+    TaskStatus: string;
+    TimestampsUri: string;
+    VoiceId: string;
+  };
+}
+
 @Injectable()
 export class AudioService {
   private readonly logger = new Logger(AudioService.name);
   private readonly unrealSpeechApiKey: string;
-  private readonly unrealSpeechBaseUrl = "https://api.v6.unrealspeech.com/";
+  private readonly unrealSpeechBaseUrl = "https://api.v8.unrealspeech.com";
 
   constructor(
     private prisma: PrismaService,
@@ -27,23 +40,24 @@ export class AudioService {
     if (!this.unrealSpeechApiKey) {
       this.logger.warn("UNREALSPEECH_API_KEY not set in environment variables");
     }
-    this.logger.log("AudioService initialized with UnrealSpeech");
+    this.logger.log("AudioService initialized with UnrealSpeech v8 API");
   }
 
   async generateAudio(summaryId: string, voiceType: string) {
     // Map Google voice types to UnrealSpeech voice IDs
+    // Updated with the newer UnrealSpeech voice options
     const voiceMap = {
-      "en-US-Neural2-F": "female-voice-1", // Map to female voice
-      "en-US-Neural2-C": "female-voice-2", // Map to alternative female voice
-      "en-US-Neural2-A": "male-voice-1", // Map to male voice
-      "en-US-Neural2-J": "male-voice-2", // Map to alternative male voice
-      "en-US-Studio-O": "male-voice-3", // Map to another male voice
-      "en-US-Wavenet-J": "female-voice-3", // Map to another female voice
+      "en-US-Neural2-F": "Eleanor", // Female voice
+      "en-US-Neural2-C": "Amelia", // Alternative female voice
+      "en-US-Neural2-A": "Daniel", // Male voice
+      "en-US-Neural2-J": "Jasper", // Alternative male voice
+      "en-US-Studio-O": "Oliver", // Another male voice
+      "en-US-Wavenet-J": "Sierra", // Another female voice
       // Add more mappings as needed
     };
 
     // Get UnrealSpeech voice ID or use default if not found
-    const voice = voiceMap[voiceType] || "female-voice-1"; // Default to female voice if not found
+    const voice = voiceMap[voiceType] || "Eleanor"; // Default to Nova female voice if not found
 
     this.logger.log(
       `Starting audio generation for summary: ${summaryId} with voice: ${voiceType} (UnrealSpeech voice: ${voice})`
@@ -66,11 +80,14 @@ export class AudioService {
       const textChunks = this.splitTextIntoChunks(summary.content, 5000);
       this.logger.debug(`Text split into ${textChunks.length} chunks`);
 
-      const audioBuffers: Buffer[] = [];
+      const audioUrls: string[] = [];
+      let totalCharacters = 0;
 
       // Process each chunk
       for (let i = 0; i < textChunks.length; i++) {
         const chunk = textChunks[i];
+        totalCharacters += chunk.length;
+
         this.logger.debug(
           `Processing chunk ${i + 1}/${textChunks.length} with length ${chunk.length}`
         );
@@ -81,11 +98,11 @@ export class AudioService {
         // Add retry mechanism for API calls
         let retryCount = 0;
         const maxRetries = 3;
-        let audioBuffer: Buffer | undefined;
+        let audioResponse: UnrealSpeechResponse | undefined;
 
         while (retryCount < maxRetries) {
           try {
-            audioBuffer = await this.synthesizeSpeechWithUnrealSpeech(
+            audioResponse = await this.synthesizeSpeechWithUnrealSpeech(
               chunk,
               voice
             );
@@ -109,8 +126,11 @@ export class AudioService {
           }
         }
 
-        if (!audioBuffer) throw new Error("Failed to generate audio buffer");
-        audioBuffers.push(audioBuffer);
+        if (!audioResponse || !audioResponse.SynthesisTask?.OutputUri) {
+          throw new Error("Failed to generate audio or retrieve audio URL");
+        }
+
+        audioUrls.push(audioResponse.SynthesisTask.OutputUri);
 
         const duration = Date.now() - startTime;
         this.logger.debug(
@@ -118,32 +138,21 @@ export class AudioService {
         );
       }
 
-      // Combine all audio chunks
-      this.logger.debug(`Combining ${audioBuffers.length} audio buffers`);
-      const combinedBuffer = Buffer.concat(audioBuffers);
-      this.logger.debug(`Combined audio size: ${combinedBuffer.length} bytes`);
+      // Calculate estimated duration (approximately 15 characters per second for speech)
+      const estimatedDuration = Math.ceil(totalCharacters / 15);
 
-      // Generate a filename for the audio
-      const fileName = `${Date.now()}-${summary.document.fileName}.mp3`;
-
-      // Upload audio to Cloudinary
-      this.logger.debug(`Uploading audio to Cloudinary`);
-      const cloudinaryResult =
-        await this.cloudinaryService.uploadBufferToCloudinary(
-          combinedBuffer,
-          fileName
-        );
-
-      // Estimate duration (mp3 bitrate is typically around 32kbps for speech)
-      const estimatedDuration = Math.floor(combinedBuffer.length / 4000); // Rough estimate in seconds
-
-      // Create audio track record
+      // Create audio track record using the first audio URL (or combine them logically in your frontend)
       this.logger.log(`Creating audio track record in database`);
+
+      // Store all URLs if there are multiple chunks
+      const audioUrl =
+        audioUrls.length === 1 ? audioUrls[0] : JSON.stringify(audioUrls);
+
       const audioTrack = await this.audioRepository.createAudio(
         `${summary.document.fileName} - Audio Summary`,
         estimatedDuration,
-        cloudinaryResult.secure_url,
-        combinedBuffer.length,
+        audioUrl, // Using the direct URL from UnrealSpeech (no need for Cloudinary)
+        totalCharacters, // Size in characters instead of bytes
         "mp3",
         voiceType, // Store the original voice type name for consistency
         summary.document.id,
@@ -212,17 +221,51 @@ export class AudioService {
   private async synthesizeSpeechWithUnrealSpeech(
     text: string,
     voice: string
-  ): Promise<Buffer> {
+  ): Promise<UnrealSpeechResponse> {
     if (!this.unrealSpeechApiKey) {
       throw new Error("UnrealSpeech API key is not configured");
     }
 
+    // Validate the text (example)
+    if (!text || text.length > 5000) {
+      // adjust length as needed
+      throw new Error("Invalid text: Text is too long or empty.");
+    }
+
+    // Validate the voice (example) - improve this validation
+    const validVoices = [
+      "Eleanor",
+      "Amelia",
+      "Daniel",
+      "Jasper",
+      "Oliver",
+      "Sierra",
+    ]; // get the actual voices from UnrealSpeech
+    if (!validVoices.includes(voice)) {
+      throw new Error(
+        `Invalid voice: ${voice}.  Must be one of: ${validVoices.join(", ")}`
+      );
+    }
+
     try {
       // UnrealSpeech text-to-speech endpoint
-      const url = `${this.unrealSpeechBaseUrl}/speech`;
+      const url = `${this.unrealSpeechBaseUrl}/synthesisTasks`;
+
+      const requestData = {
+        Text: text,
+        VoiceId: voice,
+        Bitrate: "320k", // High quality audio
+        AudioFormat: "mp3",
+        OutputFormat: "uri", // Important: We want a URL, not binary data
+        TimestampType: "sentence", // Get timestamps for sentences
+        sync: false, // Asynchronous processing
+      };
 
       // Log request details for debugging (remove sensitive info)
       this.logger.debug(`Calling UnrealSpeech API at: ${url}`);
+      this.logger.debug(
+        `UnrealSpeech API Request Data: ${JSON.stringify(requestData)}`
+      ); // LOG THE REQUEST!
 
       const response = await axios({
         method: "post",
@@ -230,18 +273,9 @@ export class AudioService {
         headers: {
           "Content-Type": "application/json",
           Authorization: `Bearer ${this.unrealSpeechApiKey}`,
-          Accept: "audio/mpeg",
         },
-        data: {
-          Text: text,
-          VoiceId: voice,
-          Bitrate: "192k", // High quality audio
-          Speed: "0", // Normal speed
-          Pitch: "1", // Default pitch
-          Codec: "libmp3lame",
-        },
-        responseType: "arraybuffer",
-        // Configure axios to handle redirects correctly
+        data: requestData, // Use the defined requestData object
+
         maxRedirects: 5, // Limit redirects to 5
         validateStatus: function (status) {
           return status >= 200 && status < 500; // Accept all 2xx and 3xx responses, reject 4xx and 5xx
@@ -258,7 +292,46 @@ export class AudioService {
         );
       }
 
-      return Buffer.from(response.data);
+      if (response.status !== 200) {
+        // Log more details in case of an error
+        this.logger.error(
+          `UnrealSpeech API returned status code ${response.status}`
+        );
+        this.logger.error(
+          `Response headers: ${JSON.stringify(response.headers)}`
+        ); //log response headers
+        this.logger.error(`Response data: ${JSON.stringify(response.data)}`); //log response data
+        throw new Error(
+          `UnrealSpeech API returned status code ${response.status}`
+        );
+      }
+
+      // API now returns a JSON with URLs instead of binary data
+      const audioResponseData: UnrealSpeechResponse = response.data;
+
+      this.logger.debug(
+        `UnrealSpeech API Response Data: ${JSON.stringify(audioResponseData)}`
+      );
+
+      const taskStatus = audioResponseData?.SynthesisTask?.TaskStatus;
+      const taskId = audioResponseData?.SynthesisTask?.TaskId;
+      const outputUri = audioResponseData?.SynthesisTask?.OutputUri;
+
+      if (taskStatus === "completed" && outputUri) {
+        return audioResponseData; // Task is complete!
+      } else if (taskStatus === "scheduled" || taskStatus === "processing") {
+        // Start polling
+        this.logger.debug(`Starting polling for task ${taskId}`);
+        if (!taskId) {
+          return Promise.reject(new Error("Task ID is missing"));
+        }
+        const completedResponse = await this.pollForCompletion(taskId);
+        return completedResponse; // Or handle errors within pollForCompletion
+      } else {
+        throw new Error(
+          `UnrealSpeech task failed or is in an unknown state: ${taskStatus}`
+        );
+      }
     } catch (error) {
       this.logger.error(
         `Error calling UnrealSpeech API: ${error.message}`,
@@ -270,23 +343,9 @@ export class AudioService {
           `UnrealSpeech API error status: ${error.response.status}`
         );
 
-        // Try to parse the error data if it's a Buffer
-        if (error.response.data && error.response.data.type === "Buffer") {
-          try {
-            const errorText = Buffer.from(error.response.data.data).toString(
-              "utf8"
-            );
-            this.logger.error(`UnrealSpeech API error details: ${errorText}`);
-          } catch (parseError) {
-            this.logger.error(
-              `UnrealSpeech API error data: ${JSON.stringify(error.response.data)}`
-            );
-          }
-        } else {
-          this.logger.error(
-            `UnrealSpeech API error data: ${JSON.stringify(error.response.data)}`
-          );
-        }
+        this.logger.error(
+          `UnrealSpeech API error data: ${JSON.stringify(error.response.data)}`
+        );
       }
 
       // Special handling for redirect errors
@@ -299,20 +358,98 @@ export class AudioService {
         return this.fallbackSynthesizeSpeech(text, voice);
       }
 
-      // Implement retry logic for network errors
-      if (
-        error.code === "ECONNREFUSED" ||
-        error.code === "ENOTFOUND" ||
-        error.code === "EAI_AGAIN"
-      ) {
+      throw new Error(
+        `Failed to synthesize speech with UnrealSpeech: ${error.message}`
+      );
+    }
+  }
+
+  // Separate function to poll for completion
+  private async pollForCompletion(
+    taskId: string
+  ): Promise<UnrealSpeechResponse> {
+    let attempt = 0;
+    const maxAttempts = 30; // Adjust as needed
+    let delay = 2000; // Initial delay in milliseconds
+
+    while (attempt < maxAttempts) {
+      attempt++;
+      this.logger.debug(`Polling attempt ${attempt} for task ${taskId}`);
+
+      try {
+        const taskDetails = await this.getTaskDetails(taskId); // Implement this function
+
+        const taskStatus = taskDetails?.SynthesisTask?.TaskStatus;
+        const outputUri = taskDetails?.SynthesisTask?.OutputUri;
+
+        if (taskStatus === "completed" && outputUri) {
+          this.logger.debug(`Task ${taskId} completed successfully`);
+          return taskDetails; // Return the full response
+        } else if (taskStatus === "failed") {
+          this.logger.error(`Task ${taskId} failed`);
+          throw new Error(`UnrealSpeech task ${taskId} failed`);
+        } else {
+          this.logger.debug(
+            `Task ${taskId} still pending (status: ${taskStatus})`
+          );
+        }
+      } catch (error) {
         this.logger.warn(
-          `Network error when calling UnrealSpeech API, could retry`
+          `Error during polling attempt ${attempt} for task ${taskId}: ${error.message}`
         );
-        // Retries are now handled by the outer function
+        // Consider breaking the loop if the error is unrecoverable
+      }
+
+      await new Promise((resolve) => setTimeout(resolve, delay));
+      delay = Math.min(delay * 2, 30000); // Exponential backoff with a maximum delay
+    }
+
+    throw new Error(`Task ${taskId} did not complete within the allowed time`);
+  }
+
+  // Implement this function to get the task details from the API
+  private async getTaskDetails(taskId: string): Promise<UnrealSpeechResponse> {
+    const url = `${this.unrealSpeechBaseUrl}/synthesisTasks/${taskId}`; // Adjust URL if different
+    this.logger.debug(
+      `Calling UnrealSpeech API to get task details for ${taskId}`
+    );
+    try {
+      const response = await axios.get(url, {
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${this.unrealSpeechApiKey}`,
+        },
+      });
+
+      if (response.status !== 200) {
+        throw new Error(
+          `UnrealSpeech API returned status code ${response.status} for task ${taskId}`
+        );
+      }
+
+      const audioResponseData: UnrealSpeechResponse = response.data;
+      this.logger.debug(
+        `UnrealSpeech API Response Data for task ${taskId}: ${JSON.stringify(audioResponseData)}`
+      );
+      return audioResponseData;
+    } catch (error) {
+      this.logger.error(
+        `Error getting UnrealSpeech API task details: ${error.message}`,
+        error.stack
+      );
+
+      if (error.response) {
+        this.logger.error(
+          `UnrealSpeech API error status: ${error.response.status}`
+        );
+
+        this.logger.error(
+          `UnrealSpeech API error data: ${JSON.stringify(error.response.data)}`
+        );
       }
 
       throw new Error(
-        `Failed to synthesize speech with UnrealSpeech: ${error.message}`
+        `Failed to get UnrealSpeech API task details: ${error.message}`
       );
     }
   }
@@ -321,11 +458,10 @@ export class AudioService {
   private async fallbackSynthesizeSpeech(
     text: string,
     voice: string
-  ): Promise<Buffer> {
+  ): Promise<UnrealSpeechResponse> {
     try {
-      // Try alternative endpoint
-      // For now, we'll try the same endpoint but with a specific version path added
-      const altUrl = `${this.unrealSpeechBaseUrl}/v2/synthesisTasks`;
+      // Try alternative endpoint - could be v7 or another version
+      const altUrl = `https://api.v7.unrealspeech.com/speech`;
 
       this.logger.debug(`Using fallback UnrealSpeech API endpoint: ${altUrl}`);
 
@@ -335,32 +471,24 @@ export class AudioService {
         headers: {
           "Content-Type": "application/json",
           Authorization: `Bearer ${this.unrealSpeechApiKey}`,
-          Accept: "audio/mpeg",
         },
         data: {
           Text: text,
           VoiceId: voice,
-          Bitrate: "192k",
-          Speed: "0",
-          Pitch: "1",
-          Codec: "libmp3lame",
-          // Some APIs require a client version - add if needed
-          ClientVersion: "1.0.0",
+          Bitrate: "320k",
+          AudioFormat: "mp3",
+          OutputFormat: "uri",
+          TimestampType: "sentence",
+          sync: false,
         },
-        responseType: "arraybuffer",
         maxRedirects: 5,
       });
 
-      return Buffer.from(response.data);
+      return response.data;
     } catch (error) {
       this.logger.error(
         `Fallback speech synthesis also failed: ${error.message}`,
         error.stack
-      );
-
-      // As a last resort, check if UnrealSpeech API documentation has been updated
-      this.logger.warn(
-        "UnrealSpeech API may have changed. Check for API updates or consider an alternative service."
       );
 
       throw new Error(`All speech synthesis attempts failed: ${error.message}`);
