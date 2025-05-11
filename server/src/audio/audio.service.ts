@@ -12,8 +12,8 @@ import { AudioRepository } from "./audio.repository";
 @Injectable()
 export class AudioService {
   private readonly logger = new Logger(AudioService.name);
-  private readonly elevenLabsApiKey: string;
-  private readonly elevenLabsBaseUrl = "https://api.elevenlabs.io/v1";
+  private readonly unrealSpeechApiKey: string;
+  private readonly unrealSpeechBaseUrl = "https://api.v6.unrealspeech.com/";
 
   constructor(
     private prisma: PrismaService,
@@ -22,31 +22,31 @@ export class AudioService {
     private audioRepository: AudioRepository,
     private summaryRepository: SummaryRepository
   ) {
-    this.elevenLabsApiKey =
-      this.configService.get<string>("ELEVENLABS_API_KEY") ?? "";
-    if (!this.elevenLabsApiKey) {
-      this.logger.warn("ELEVENLABS_API_KEY not set in environment variables");
+    this.unrealSpeechApiKey =
+      this.configService.get<string>("UNREALSPEECH_API_KEY") ?? "";
+    if (!this.unrealSpeechApiKey) {
+      this.logger.warn("UNREALSPEECH_API_KEY not set in environment variables");
     }
-    this.logger.log("AudioService initialized with ElevenLabs");
+    this.logger.log("AudioService initialized with UnrealSpeech");
   }
 
   async generateAudio(summaryId: string, voiceType: string) {
-    // Map Google voice types to ElevenLabs voice IDs
+    // Map Google voice types to UnrealSpeech voice IDs
     const voiceMap = {
-      "en-US-Neural2-F": "21m00Tcm4TlvDq8ikWAM", // Rachel
-      "en-US-Neural2-C": "AZnzlk1XvdvUeBnXmlld", // Domi
-      "en-US-Neural2-A": "EXAVITQu4vr4xnSDxMaL", // Adam
-      "en-US-Neural2-J": "VR6AewLTigWG4xSOukaG", // Arnold
-      "en-US-Studio-O": "pNInz6obpgDQGcFmaJgB", // Josh
-      "en-US-Wavenet-J": "yoZ06aMxZJJ28mfd3POQ", // Bella
+      "en-US-Neural2-F": "female-voice-1", // Map to female voice
+      "en-US-Neural2-C": "female-voice-2", // Map to alternative female voice
+      "en-US-Neural2-A": "male-voice-1", // Map to male voice
+      "en-US-Neural2-J": "male-voice-2", // Map to alternative male voice
+      "en-US-Studio-O": "male-voice-3", // Map to another male voice
+      "en-US-Wavenet-J": "female-voice-3", // Map to another female voice
       // Add more mappings as needed
     };
 
-    // Get ElevenLabs voice ID or use default if not found
-    const voiceId = voiceMap[voiceType] || "21m00Tcm4TlvDq8ikWAM"; // Default to Rachel if voice not found
+    // Get UnrealSpeech voice ID or use default if not found
+    const voice = voiceMap[voiceType] || "female-voice-1"; // Default to female voice if not found
 
     this.logger.log(
-      `Starting audio generation for summary: ${summaryId} with voice: ${voiceType} (ElevenLabs ID: ${voiceId})`
+      `Starting audio generation for summary: ${summaryId} with voice: ${voiceType} (UnrealSpeech voice: ${voice})`
     );
 
     const summary = await this.summaryRepository.findSummaryById(summaryId);
@@ -61,9 +61,9 @@ export class AudioService {
     );
 
     try {
-      // Split long text into chunks (ElevenLabs has a limit of ~4096 tokens)
-      this.logger.debug(`Splitting text into chunks with max length: 4000`);
-      const textChunks = this.splitTextIntoChunks(summary.content, 4000);
+      // Split long text into chunks (UnrealSpeech may have its own limits)
+      this.logger.debug(`Splitting text into chunks with max length: 5000`);
+      const textChunks = this.splitTextIntoChunks(summary.content, 5000);
       this.logger.debug(`Text split into ${textChunks.length} chunks`);
 
       const audioBuffers: Buffer[] = [];
@@ -76,17 +76,45 @@ export class AudioService {
         );
 
         const startTime = Date.now();
-        this.logger.debug(`Calling ElevenLabs API for chunk ${i + 1}`);
+        this.logger.debug(`Calling UnrealSpeech API for chunk ${i + 1}`);
 
-        const audioBuffer = await this.synthesizeSpeechWithElevenLabs(
-          chunk,
-          voiceId
-        );
+        // Add retry mechanism for API calls
+        let retryCount = 0;
+        const maxRetries = 3;
+        let audioBuffer: Buffer | undefined;
+
+        while (retryCount < maxRetries) {
+          try {
+            audioBuffer = await this.synthesizeSpeechWithUnrealSpeech(
+              chunk,
+              voice
+            );
+            // If successful, break the retry loop
+            break;
+          } catch (error) {
+            retryCount++;
+            this.logger.warn(
+              `Attempt ${retryCount}/${maxRetries} failed: ${error.message}`
+            );
+
+            // If we've reached max retries, throw the error
+            if (retryCount >= maxRetries) {
+              throw error;
+            }
+
+            // Wait before retrying (exponential backoff)
+            const delay = 1000 * Math.pow(2, retryCount);
+            this.logger.debug(`Waiting ${delay}ms before retry`);
+            await new Promise((resolve) => setTimeout(resolve, delay));
+          }
+        }
+
+        if (!audioBuffer) throw new Error("Failed to generate audio buffer");
         audioBuffers.push(audioBuffer);
 
         const duration = Date.now() - startTime;
         this.logger.debug(
-          `ElevenLabs API call completed in ${duration}ms for chunk ${i + 1}`
+          `UnrealSpeech API call completed in ${duration}ms for chunk ${i + 1}`
         );
       }
 
@@ -170,6 +198,7 @@ export class AudioService {
       message: "Audios retrieved successfully",
     };
   }
+
   async getAudios() {
     const audios = await this.audioRepository.findAllAudios();
     return {
@@ -180,50 +209,65 @@ export class AudioService {
     };
   }
 
-  private async synthesizeSpeechWithElevenLabs(
+  private async synthesizeSpeechWithUnrealSpeech(
     text: string,
-    voiceId: string
+    voice: string
   ): Promise<Buffer> {
-    if (!this.elevenLabsApiKey) {
-      throw new Error("ElevenLabs API key is not configured");
+    if (!this.unrealSpeechApiKey) {
+      throw new Error("UnrealSpeech API key is not configured");
     }
 
     try {
-      // ElevenLabs text-to-speech endpoint
-      const url = `${this.elevenLabsBaseUrl}/text-to-speech/${voiceId}`;
+      // UnrealSpeech text-to-speech endpoint
+      const url = `${this.unrealSpeechBaseUrl}/speech`;
 
       // Log request details for debugging (remove sensitive info)
-      this.logger.debug(`Calling ElevenLabs API at: ${url}`);
+      this.logger.debug(`Calling UnrealSpeech API at: ${url}`);
 
       const response = await axios({
         method: "post",
         url,
         headers: {
           "Content-Type": "application/json",
-          "xi-api-key": this.elevenLabsApiKey,
+          Authorization: `Bearer ${this.unrealSpeechApiKey}`,
           Accept: "audio/mpeg",
         },
         data: {
-          text,
-          model_id: "eleven_monolingual_v1",
-          voice_settings: {
-            stability: 0.5,
-            similarity_boost: 0.5,
-          },
+          Text: text,
+          VoiceId: voice,
+          Bitrate: "192k", // High quality audio
+          Speed: "0", // Normal speed
+          Pitch: "1", // Default pitch
+          Codec: "libmp3lame",
         },
         responseType: "arraybuffer",
+        // Configure axios to handle redirects correctly
+        maxRedirects: 5, // Limit redirects to 5
+        validateStatus: function (status) {
+          return status >= 200 && status < 500; // Accept all 2xx and 3xx responses, reject 4xx and 5xx
+        },
       });
+
+      // Handle potential 3xx responses that weren't automatically followed
+      if (response.status >= 300 && response.status < 400) {
+        this.logger.warn(
+          `Received ${response.status} redirect response but wasn't followed automatically`
+        );
+        throw new Error(
+          `Received ${response.status} redirect that couldn't be followed`
+        );
+      }
 
       return Buffer.from(response.data);
     } catch (error) {
       this.logger.error(
-        `Error calling ElevenLabs API: ${error.message}`,
+        `Error calling UnrealSpeech API: ${error.message}`,
         error.stack
       );
 
       if (error.response) {
         this.logger.error(
-          `ElevenLabs API error status: ${error.response.status}`
+          `UnrealSpeech API error status: ${error.response.status}`
         );
 
         // Try to parse the error data if it's a Buffer
@@ -232,22 +276,94 @@ export class AudioService {
             const errorText = Buffer.from(error.response.data.data).toString(
               "utf8"
             );
-            this.logger.error(`ElevenLabs API error details: ${errorText}`);
+            this.logger.error(`UnrealSpeech API error details: ${errorText}`);
           } catch (parseError) {
             this.logger.error(
-              `ElevenLabs API error data: ${JSON.stringify(error.response.data)}`
+              `UnrealSpeech API error data: ${JSON.stringify(error.response.data)}`
             );
           }
         } else {
           this.logger.error(
-            `ElevenLabs API error data: ${JSON.stringify(error.response.data)}`
+            `UnrealSpeech API error data: ${JSON.stringify(error.response.data)}`
           );
         }
       }
 
+      // Special handling for redirect errors
+      if (error.code === "ERR_FR_TOO_MANY_REDIRECTS") {
+        this.logger.error(
+          "Too many redirects detected. UnrealSpeech API endpoint might have changed."
+        );
+
+        // Try alternative endpoint or approach
+        return this.fallbackSynthesizeSpeech(text, voice);
+      }
+
+      // Implement retry logic for network errors
+      if (
+        error.code === "ECONNREFUSED" ||
+        error.code === "ENOTFOUND" ||
+        error.code === "EAI_AGAIN"
+      ) {
+        this.logger.warn(
+          `Network error when calling UnrealSpeech API, could retry`
+        );
+        // Retries are now handled by the outer function
+      }
+
       throw new Error(
-        `Failed to synthesize speech with ElevenLabs: ${error.message}`
+        `Failed to synthesize speech with UnrealSpeech: ${error.message}`
       );
+    }
+  }
+
+  // Fallback method when the primary endpoint has redirect issues
+  private async fallbackSynthesizeSpeech(
+    text: string,
+    voice: string
+  ): Promise<Buffer> {
+    try {
+      // Try alternative endpoint
+      // For now, we'll try the same endpoint but with a specific version path added
+      const altUrl = `${this.unrealSpeechBaseUrl}/v2/synthesisTasks`;
+
+      this.logger.debug(`Using fallback UnrealSpeech API endpoint: ${altUrl}`);
+
+      const response = await axios({
+        method: "post",
+        url: altUrl,
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${this.unrealSpeechApiKey}`,
+          Accept: "audio/mpeg",
+        },
+        data: {
+          Text: text,
+          VoiceId: voice,
+          Bitrate: "192k",
+          Speed: "0",
+          Pitch: "1",
+          Codec: "libmp3lame",
+          // Some APIs require a client version - add if needed
+          ClientVersion: "1.0.0",
+        },
+        responseType: "arraybuffer",
+        maxRedirects: 5,
+      });
+
+      return Buffer.from(response.data);
+    } catch (error) {
+      this.logger.error(
+        `Fallback speech synthesis also failed: ${error.message}`,
+        error.stack
+      );
+
+      // As a last resort, check if UnrealSpeech API documentation has been updated
+      this.logger.warn(
+        "UnrealSpeech API may have changed. Check for API updates or consider an alternative service."
+      );
+
+      throw new Error(`All speech synthesis attempts failed: ${error.message}`);
     }
   }
 

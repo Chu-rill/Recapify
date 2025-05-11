@@ -8,19 +8,30 @@ import { Express } from "express";
 import * as pdfParse from "pdf-parse";
 import { Readable } from "stream";
 import * as path from "path";
+import * as fs from "fs";
+import * as util from "util";
+import { AnyRecord } from "dns";
 
 @Injectable()
 export class CloudinaryService {
   private readonly logger = new Logger(CloudinaryService.name);
+  private readonly DEFAULT_TIMEOUT = 60000; // 60 seconds timeout for uploads
+  private readonly MAX_RETRIES = 3;
+  private readonly RETRY_DELAY = 2000; // 2 seconds
+  private readonly LOCAL_FALLBACK_DIR = "./uploads/fallback";
 
-  // Default timeout increased to 5 minutes (300000ms)
-  private readonly DEFAULT_TIMEOUT = 300000;
+  // private readonly DEFAULT_TIMEOUT = 300000; Default timeout increased to 5 minutes (300000ms)
 
   constructor(@Inject("CLOUDINARY") private cloudinary) {
     // Set global configuration for Cloudinary
     this.cloudinary.config({
       upload_timeout: this.DEFAULT_TIMEOUT,
     });
+
+    // Create fallback directory if it doesn't exist
+    if (!fs.existsSync(this.LOCAL_FALLBACK_DIR)) {
+      fs.mkdirSync(this.LOCAL_FALLBACK_DIR, { recursive: true });
+    }
   }
 
   async uploadDocument(file: Express.Multer.File): Promise<UploadApiResponse> {
@@ -121,13 +132,51 @@ export class CloudinaryService {
   }
 
   /**
-   * Uploads a buffer directly to Cloudinary without creating a local file
+   * Uploads a buffer directly to Cloudinary with retry mechanism.
+   * Falls back to local file storage if Cloudinary upload fails.
    */
   async uploadBufferToCloudinary(
     buffer: Buffer,
     filename: string,
     folder: string = "audios"
   ) {
+    let retries = 0;
+    let lastError;
+
+    while (retries < this.MAX_RETRIES) {
+      try {
+        return await this.performCloudinaryUpload(buffer, filename, folder);
+      } catch (error) {
+        lastError = error;
+        retries++;
+        this.logger.warn(
+          `Cloudinary upload failed (attempt ${retries}/${this.MAX_RETRIES}): ${error.message}`
+        );
+
+        if (retries < this.MAX_RETRIES) {
+          this.logger.debug(`Retrying in ${this.RETRY_DELAY}ms...`);
+          await new Promise((resolve) =>
+            setTimeout(resolve, this.RETRY_DELAY * retries)
+          ); // Exponential backoff
+        }
+      }
+    }
+
+    // All retries failed, save locally as fallback
+    this.logger.warn(
+      `All Cloudinary upload attempts failed. Saving file locally as fallback.`
+    );
+    return this.saveLocally(buffer, filename);
+  }
+
+  /**
+   * Perform the actual Cloudinary upload
+   */
+  private performCloudinaryUpload(
+    buffer: Buffer,
+    filename: string,
+    folder: string
+  ): Promise<any> {
     return new Promise<any>((resolve, reject) => {
       const uploadOptions: UploadApiOptions = {
         folder: folder,
@@ -154,13 +203,9 @@ export class CloudinaryService {
             reject(error);
             return;
           }
-
           if (!result) {
-            this.logger.error(`Cloudinary upload result is null`);
-            reject(new Error("Cloudinary upload result is null"));
-            return;
+            return reject(new Error("Cloudinary upload result is null"));
           }
-
           this.logger.debug(`Cloudinary upload complete: ${result.secure_url}`);
           resolve(result);
         }
@@ -168,6 +213,42 @@ export class CloudinaryService {
 
       stream.pipe(cloudinaryStream);
     });
+  }
+
+  /**
+   * Save file locally as fallback when Cloudinary upload fails
+   */
+  private async saveLocally(buffer: Buffer, filename: string): Promise<any> {
+    const filePath = path.join(this.LOCAL_FALLBACK_DIR, filename);
+    const writeFile = util.promisify(fs.writeFile);
+
+    try {
+      await writeFile(filePath, buffer);
+      this.logger.log(`Fallback: File saved locally at ${filePath}`);
+
+      // Return a structure similar to Cloudinary result
+      return {
+        secure_url: `/fallback/${filename}`, // Relative URL for local serving
+        public_id: path.parse(filename).name,
+        resource_type: path.extname(filename).substring(1) || "raw",
+        bytes: buffer.length,
+        format: path.extname(filename).substring(1) || "bin",
+        created_at: new Date().toISOString(),
+        is_fallback: true, // Flag to indicate this is a fallback URL
+      };
+    } catch (error) {
+      this.logger.error(`Failed to save file locally: ${error.message}`);
+      throw new Error(
+        `Failed to upload to Cloudinary and failed to save locally: ${error.message}`
+      );
+    }
+  }
+
+  /**
+   * Check if URL is a fallback local URL
+   */
+  isFallbackUrl(url: string): any {
+    return url && url.startsWith("/fallback/");
   }
 
   // Function to extract text from a Cloudinary resource
