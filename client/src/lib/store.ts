@@ -1,7 +1,7 @@
-import { create } from 'zustand';
-import { devtools, persist } from 'zustand/middleware';
-import { User, Document, Summary, Audio } from '../types';
-import { authService } from '../services/auth';
+import { create } from "zustand";
+import { devtools, persist } from "zustand/middleware";
+import { User, Document, Summary, Audio } from "../types";
+import { authService } from "../services/auth";
 
 interface AuthState {
   user: User | null;
@@ -9,7 +9,12 @@ interface AuthState {
   error: string | null;
   isAuthenticated: boolean;
   login: (email: string, password: string) => Promise<void>;
-  signup: (username: string, email: string, password: string, phone?: string) => Promise<void>;
+  signup: (
+    username: string,
+    email: string,
+    password: string,
+    phone?: string
+  ) => Promise<void>;
   logout: () => void;
   fetchUser: () => Promise<void>;
   deleteAccount: () => Promise<void>;
@@ -23,85 +28,99 @@ export const useAuthStore = create<AuthState>()(
         isLoading: false,
         error: null,
         isAuthenticated: authService.isAuthenticated(),
-        
+
         login: async (email, password) => {
           set({ isLoading: true, error: null });
           try {
             const response = await authService.login(email, password);
-            set({ 
-              user: response.data, 
-              isAuthenticated: true, 
-              isLoading: false 
+            set({
+              user: response.data,
+              isAuthenticated: true,
+              isLoading: false,
             });
           } catch (error) {
-            const message = error instanceof Error ? error.message : 'Login failed';
+            const message =
+              error instanceof Error ? error.message : "Login failed";
             set({ error: message, isLoading: false });
             throw error;
           }
         },
-        
+
         signup: async (username, email, password, phone) => {
           set({ isLoading: true, error: null });
           try {
-            const response = await authService.signup(username, email, password, phone);
-            set({ 
-              user: response.data, 
-              isAuthenticated: true, 
-              isLoading: false 
+            const response = await authService.signup(
+              username,
+              email,
+              password,
+              phone
+            );
+            set({
+              user: response.data,
+              isAuthenticated: true,
+              isLoading: false,
             });
           } catch (error) {
-            const message = error instanceof Error ? error.message : 'Signup failed';
+            const message =
+              error instanceof Error ? error.message : "Signup failed";
             set({ error: message, isLoading: false });
             throw error;
           }
         },
-        
+
         logout: () => {
           authService.logout();
           set({ user: null, isAuthenticated: false });
         },
-        
+
         fetchUser: async () => {
           if (!authService.isAuthenticated()) {
             set({ user: null, isAuthenticated: false });
             return;
           }
-          
+
           set({ isLoading: true, error: null });
           try {
             const response = await authService.getCurrentUser();
-            set({ 
-              user: response.data, 
-              isAuthenticated: true, 
-              isLoading: false 
+            set({
+              user: response.data,
+              isAuthenticated: true,
+              isLoading: false,
             });
           } catch (error) {
-            const message = error instanceof Error ? error.message : 'Failed to fetch user';
+            const message =
+              error instanceof Error ? error.message : "Failed to fetch user";
             set({ error: message, isLoading: false });
             authService.logout();
             set({ user: null, isAuthenticated: false });
           }
         },
-        
+
         deleteAccount: async () => {
           set({ isLoading: true, error: null });
           try {
             await authService.deleteAccount();
-            set({ 
-              user: null, 
-              isAuthenticated: false, 
-              isLoading: false 
+            set({
+              user: null,
+              isAuthenticated: false,
+              isLoading: false,
             });
           } catch (error) {
-            const message = error instanceof Error ? error.message : 'Failed to delete account';
+            const message =
+              error instanceof Error
+                ? error.message
+                : "Failed to delete account";
             set({ error: message, isLoading: false });
             throw error;
           }
         },
       }),
       {
-        name: 'auth-storage',
-        partialize: (state) => ({ user: state.user, isAuthenticated: state.isAuthenticated }),
+        name: "auth-storage",
+        partialize: (state) => ({
+          user: state.user,
+          isAuthenticated: state.isAuthenticated,
+        }),
       }
     )
   )
@@ -114,7 +133,7 @@ interface DocumentState {
   isLoading: boolean;
   error: string | null;
   uploadProgress: number;
-  fetchDocuments: () => Promise<void>;
+  fetchDocuments: () => Promise<Document[]>;
   uploadDocument: (file: File) => Promise<Document>;
   fetchSummary: (documentId: string) => Promise<Summary>;
   deleteDocument: (documentId: string) => Promise<void>;
@@ -129,84 +148,101 @@ export const useDocumentStore = create<DocumentState>()(
     isLoading: false,
     error: null,
     uploadProgress: 0,
-    
+
     fetchDocuments: async () => {
       set({ isLoading: true, error: null });
       try {
-        const { data: documents } = await import('../services/documents')
-          .then(module => module.documentService.getAllDocuments());
-        
+        const { data: documents } = await import("../services/documents").then(
+          (module) => module.documentService.getAllDocuments()
+        );
+
         set({ documents, isLoading: false });
         return documents;
       } catch (error) {
-        const message = error instanceof Error ? error.message : 'Failed to fetch documents';
+        const message =
+          error instanceof Error ? error.message : "Failed to fetch documents";
         set({ error: message, isLoading: false });
         throw error;
       }
     },
-    
+
     uploadDocument: async (file: File) => {
       set({ isLoading: true, error: null, uploadProgress: 0 });
       try {
-        const { data: document } = await import('../services/documents')
-          .then(module => module.documentService.uploadDocument(file, 
-            (progress) => set({ uploadProgress: progress })
-          ));
-        
+        const { data: document } = await import("../services/documents").then(
+          (module) =>
+            module.documentService.uploadDocument(file, (progress) =>
+              set({ uploadProgress: progress })
+            )
+        );
+
         // Update documents list
         const documents = [...get().documents, document];
-        set({ 
-          documents, 
-          currentDocument: document, 
-          isLoading: false, 
-          uploadProgress: 100 
+        set({
+          documents,
+          currentDocument: document,
+          isLoading: false,
+          uploadProgress: 100,
         });
-        
+
         return document;
       } catch (error) {
-        const message = error instanceof Error ? error.message : 'Failed to upload document';
+        const message =
+          error instanceof Error ? error.message : "Failed to upload document";
         set({ error: message, isLoading: false, uploadProgress: 0 });
         throw error;
       }
     },
-    
+
     fetchSummary: async (documentId: string) => {
       set({ isLoading: true, error: null });
       try {
-        const { data: summary } = await import('../services/documents')
-          .then(module => module.documentService.getSummary(documentId));
-        
+        const { data: summary } = await import("../services/documents").then(
+          (module) => module.documentService.getSummary(documentId)
+        );
+
         set({ currentSummary: summary, isLoading: false });
         return summary;
       } catch (error) {
-        const message = error instanceof Error ? error.message : 'Failed to fetch summary';
+        const message =
+          error instanceof Error ? error.message : "Failed to fetch summary";
         set({ error: message, isLoading: false });
         throw error;
       }
     },
-    
+
     deleteDocument: async (documentId: string) => {
       set({ isLoading: true, error: null });
       try {
-        await import('../services/documents')
-          .then(module => module.documentService.deleteDocument(documentId));
-        
+        await import("../services/documents").then((module) =>
+          module.documentService.deleteDocument(documentId)
+        );
+
         // Update documents list
-        const documents = get().documents.filter(doc => doc.id !== documentId);
-        set({ 
-          documents, 
+        const documents = get().documents.filter(
+          (doc) => doc.id !== documentId
+        );
+        set({
+          documents,
           isLoading: false,
           // Clear current document and summary if they match the deleted document
-          currentDocument: get().currentDocument?.id === documentId ? null : get().currentDocument,
-          currentSummary: get().currentSummary?.documentId === documentId ? null : get().currentSummary
+          currentDocument:
+            get().currentDocument?.id === documentId
+              ? null
+              : get().currentDocument,
+          currentSummary:
+            get().currentSummary?.documentId === documentId
+              ? null
+              : get().currentSummary,
         });
       } catch (error) {
-        const message = error instanceof Error ? error.message : 'Failed to delete document';
+        const message =
+          error instanceof Error ? error.message : "Failed to delete document";
         set({ error: message, isLoading: false });
         throw error;
       }
     },
-    
+
     resetState: () => {
       set({
         documents: [],
@@ -214,9 +250,9 @@ export const useDocumentStore = create<DocumentState>()(
         currentSummary: null,
         isLoading: false,
         error: null,
-        uploadProgress: 0
+        uploadProgress: 0,
       });
-    }
+    },
   }))
 );
 
@@ -225,7 +261,7 @@ interface AudioState {
   currentAudio: Audio | null;
   isLoading: boolean;
   error: string | null;
-  fetchAudioList: () => Promise<void>;
+  fetchAudioList: () => Promise<Audio[]>;
   generateAudio: (summaryId: string) => Promise<Audio>;
   fetchAudio: (audioId: string) => Promise<Audio>;
   deleteAudio: (audioId: string) => Promise<void>;
@@ -238,87 +274,98 @@ export const useAudioStore = create<AudioState>()(
     currentAudio: null,
     isLoading: false,
     error: null,
-    
+
     fetchAudioList: async () => {
       set({ isLoading: true, error: null });
       try {
-        const { data: audioList } = await import('../services/audio')
-          .then(module => module.audioService.getAllAudio());
-        
+        const { data: audioList } = await import("../services/audio").then(
+          (module) => module.audioService.getAllAudio()
+        );
+
         set({ audioList, isLoading: false });
         return audioList;
       } catch (error) {
-        const message = error instanceof Error ? error.message : 'Failed to fetch audio list';
+        const message =
+          error instanceof Error ? error.message : "Failed to fetch audio list";
         set({ error: message, isLoading: false });
         throw error;
       }
     },
-    
+
     generateAudio: async (summaryId: string) => {
       set({ isLoading: true, error: null });
       try {
-        const { data: audio } = await import('../services/audio')
-          .then(module => module.audioService.generateAudio(summaryId));
-        
+        const { data: audio } = await import("../services/audio").then(
+          (module) => module.audioService.generateAudio(summaryId)
+        );
+
         // Update audio list
         const audioList = [...get().audioList, audio];
-        set({ 
-          audioList, 
-          currentAudio: audio, 
-          isLoading: false 
+        set({
+          audioList,
+          currentAudio: audio,
+          isLoading: false,
         });
-        
+
         return audio;
       } catch (error) {
-        const message = error instanceof Error ? error.message : 'Failed to generate audio';
+        const message =
+          error instanceof Error ? error.message : "Failed to generate audio";
         set({ error: message, isLoading: false });
         throw error;
       }
     },
-    
+
     fetchAudio: async (audioId: string) => {
       set({ isLoading: true, error: null });
       try {
-        const { data: audio } = await import('../services/audio')
-          .then(module => module.audioService.getAudio(audioId));
-        
+        const { data: audio } = await import("../services/audio").then(
+          (module) => module.audioService.getAudio(audioId)
+        );
+
         set({ currentAudio: audio, isLoading: false });
         return audio;
       } catch (error) {
-        const message = error instanceof Error ? error.message : 'Failed to fetch audio';
+        const message =
+          error instanceof Error ? error.message : "Failed to fetch audio";
         set({ error: message, isLoading: false });
         throw error;
       }
     },
-    
+
     deleteAudio: async (audioId: string) => {
       set({ isLoading: true, error: null });
       try {
-        await import('../services/audio')
-          .then(module => module.audioService.deleteAudio(audioId));
-        
+        await import("../services/audio").then((module) =>
+          module.audioService.deleteAudio(audioId)
+        );
+
         // Update audio list
-        const audioList = get().audioList.filter(audio => audio.id !== audioId);
-        set({ 
-          audioList, 
+        const audioList = get().audioList.filter(
+          (audio) => audio.id !== audioId
+        );
+        set({
+          audioList,
           isLoading: false,
           // Clear current audio if it matches the deleted audio
-          currentAudio: get().currentAudio?.id === audioId ? null : get().currentAudio
+          currentAudio:
+            get().currentAudio?.id === audioId ? null : get().currentAudio,
         });
       } catch (error) {
-        const message = error instanceof Error ? error.message : 'Failed to delete audio';
+        const message =
+          error instanceof Error ? error.message : "Failed to delete audio";
         set({ error: message, isLoading: false });
         throw error;
       }
     },
-    
+
     resetState: () => {
       set({
         audioList: [],
         currentAudio: null,
         isLoading: false,
-        error: null
+        error: null,
       });
-    }
+    },
   }))
 );
