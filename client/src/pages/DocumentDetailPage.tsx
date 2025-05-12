@@ -1,275 +1,288 @@
-import { useEffect, useState } from "react";
-import { useParams, useNavigate } from "react-router-dom";
-import Layout from "../components/Layout";
-import AudioPlayer from "../components/AudioPlayer";
-import { useDocumentsStore } from "../store/documentsStore";
-import { getDocument } from "../services/document-service";
-import { getSummary, generateSummary } from "../services/summary-service";
-import { generateAudio } from "../services/audio-service";
-import { Document } from "../types/document";
-import { Summary } from "../types/summary";
-import { Audio } from "../types/audio";
-import { toast } from "../components/ui/sonner";
-import { ArrowLeft, FileText, Zap, Headphones } from "lucide-react";
+import { useEffect, useState } from 'react';
+import { useParams, useNavigate } from 'react-router-dom';
+import { toast } from 'sonner';
+import { useDocumentStore, useAudioStore } from '@/lib/store';
+import { 
+  Card, 
+  CardContent, 
+  CardDescription, 
+  CardFooter, 
+  CardHeader, 
+  CardTitle 
+} from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Separator } from '@/components/ui/separator';
+import { Badge } from '@/components/ui/badge';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { AudioPlayer } from '@/components/ui/audio-player';
+import { 
+  Loader2, 
+  FileText, 
+  ArrowLeft, 
+  Headphones, 
+  AlertCircle,
+  Download,
+  Copy
+} from 'lucide-react';
+import { formatDate } from '@/lib/format';
 
-const DocumentDetailPage = () => {
+export default function DocumentDetailPage() {
   const { documentId } = useParams<{ documentId: string }>();
   const navigate = useNavigate();
-  const [document, setDocument] = useState<Document | null>(null);
-  const [summary, setSummary] = useState<Summary | null>(null);
-  const [audio, setAudio] = useState<Audio | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
-  const [isSummarizing, setIsSummarizing] = useState(false);
+  
+  const { documents, currentDocument, currentSummary, fetchDocuments, fetchSummary } = useDocumentStore();
+  const { audioList, currentAudio, fetchAudioList, generateAudio, isLoading: isAudioLoading } = useAudioStore();
+  
   const [isGeneratingAudio, setIsGeneratingAudio] = useState(false);
-  const [activeTab, setActiveTab] = useState<"summary" | "keyPoints">(
-    "summary"
-  );
-  const { setSelectedDocument } = useDocumentsStore();
-
+  const [isLoadingSummary, setIsLoadingSummary] = useState(false);
+  
   useEffect(() => {
-    if (!documentId) return;
-
-    const fetchDocumentDetails = async () => {
+    const loadDocumentData = async () => {
+      if (!documentId) return;
+      
       try {
-        setIsLoading(true);
-
-        // Fetch document
-        const docResponse = await getDocument(documentId);
-        setDocument(docResponse.data);
-        setSelectedDocument(docResponse.data);
-
-        // Try to fetch summary
-        try {
-          const summaryResponse = await getSummary(documentId);
-          setSummary(summaryResponse.data);
-
-          // If summary exists, try to check if audio exists as well
-          // This is a placeholder since we don't have a specific endpoint to check for audio by documentId
-          // In a real implementation, you might need to adjust this logic
-        } catch (error) {
-          // Summary doesn't exist yet, which is okay
-          console.log("No summary available yet");
+        // Fetch documents if not already loaded
+        if (documents.length === 0) {
+          await fetchDocuments();
         }
+        
+        // Fetch summary for this document
+        setIsLoadingSummary(true);
+        await fetchSummary(documentId);
+        setIsLoadingSummary(false);
+        
+        // Fetch audio summaries
+        await fetchAudioList();
       } catch (error) {
-        console.error("Error fetching document details:", error);
-        toast.error("Failed to load document details");
-        navigate("/dashboard");
-      } finally {
-        setIsLoading(false);
+        setIsLoadingSummary(false);
+        toast.error('Failed to load document data');
       }
     };
-
-    fetchDocumentDetails();
-  }, [documentId, navigate, setSelectedDocument]);
-
-  const handleGenerateSummary = async () => {
-    if (!documentId) return;
-
-    try {
-      setIsSummarizing(true);
-      const response = await generateSummary(documentId);
-      setSummary(response.data);
-      toast.success("Summary generated successfully");
-    } catch (error) {
-      console.error("Error generating summary:", error);
-      toast.error("Failed to generate summary");
-    } finally {
-      setIsSummarizing(false);
-    }
-  };
-
+    
+    loadDocumentData();
+  }, [documentId, fetchDocuments, fetchSummary, fetchAudioList, documents.length]);
+  
   const handleGenerateAudio = async () => {
-    if (!summary) return;
-
+    if (!currentSummary) return;
+    
+    setIsGeneratingAudio(true);
     try {
-      setIsGeneratingAudio(true);
-      const response = await generateAudio(summary.id);
-      setAudio(response.data);
-      toast.success("Audio generated successfully");
+      await generateAudio(currentSummary.id);
+      toast.success('Audio summary generated successfully');
     } catch (error) {
-      console.error("Error generating audio:", error);
-      toast.error("Failed to generate audio");
+      toast.error('Failed to generate audio summary');
     } finally {
       setIsGeneratingAudio(false);
     }
   };
-
-  if (isLoading) {
-    return (
-      <Layout>
-        <div className="flex justify-center items-center min-h-[60vh]">
-          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary"></div>
-        </div>
-      </Layout>
-    );
-  }
-
-  if (!document) {
-    return (
-      <Layout>
-        <div className="text-center py-10">
-          <p className="text-red-500">Document not found</p>
-          <button
-            onClick={() => navigate("/dashboard")}
-            className="mt-4 inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-primary hover:bg-primary/90"
-          >
-            <ArrowLeft className="mr-2 h-4 w-4" /> Go back to Dashboard
-          </button>
-        </div>
-      </Layout>
-    );
-  }
-
+  
+  // Find the audio for this document
+  const documentAudio = audioList.find(audio => audio.documentId === documentId);
+  
+  // Find document from the documents list
+  const document = documents.find(doc => doc.id === documentId) || currentDocument;
+  
+  const handleCopyText = (text: string) => {
+    navigator.clipboard.writeText(text);
+    toast.success('Copied to clipboard');
+  };
+  
+  const isLoading = isLoadingSummary || !document;
+  
   return (
-    <Layout>
-      <div className="mb-6">
-        <button
-          onClick={() => navigate("/dashboard")}
-          className="inline-flex items-center text-gray-600 hover:text-primary"
-        >
-          <ArrowLeft className="mr-2 h-4 w-4" /> Back to Dashboard
-        </button>
-      </div>
-
-      <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
-        {/* Document header */}
-        <div className="border-b border-gray-200 px-6 py-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-3">
-              <div className="bg-primary/10 p-2 rounded-md">
-                <FileText className="h-5 w-5 text-primary" />
-              </div>
-              <h1 className="text-xl font-semibold text-gray-900">
-                {document.name}
-              </h1>
-            </div>
-            <div className="text-sm text-gray-500">
-              {new Date(document.createdAt).toLocaleDateString()}
-            </div>
+    <div className="container py-10">
+      <Button 
+        variant="ghost" 
+        className="mb-6 gap-2" 
+        onClick={() => navigate('/dashboard')}
+      >
+        <ArrowLeft className="h-4 w-4" />
+        Back to Dashboard
+      </Button>
+      
+      {isLoading ? (
+        <div className="flex justify-center py-20">
+          <Loader2 className="h-10 w-10 animate-spin text-muted-foreground" />
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <div className="lg:col-span-2 space-y-6">
+            <Card>
+              <CardHeader>
+                <div className="flex justify-between items-start">
+                  <div>
+                    <CardTitle className="flex items-center gap-2">
+                      <FileText className="h-5 w-5" />
+                      {document?.name}
+                    </CardTitle>
+                    <CardDescription>
+                      {formatDate(document?.createdAt || '')}
+                    </CardDescription>
+                  </div>
+                  
+                  {document?.status && (
+                    <Badge variant="outline">{document.status}</Badge>
+                  )}
+                </div>
+              </CardHeader>
+              
+              <CardContent>
+                {currentSummary ? (
+                  <div className="space-y-4">
+                    <div>
+                      <h3 className="text-lg font-medium mb-2">Short Summary</h3>
+                      <p className="text-muted-foreground text-sm">
+                        {currentSummary.shortSummary}
+                      </p>
+                    </div>
+                    
+                    <Separator />
+                    
+                    <div>
+                      <div className="flex justify-between items-center mb-2">
+                        <h3 className="text-lg font-medium">Full Summary</h3>
+                        <Button 
+                          variant="ghost" 
+                          size="sm" 
+                          className="h-8 gap-1"
+                          onClick={() => handleCopyText(currentSummary.content)}
+                        >
+                          <Copy className="h-4 w-4" />
+                          <span>Copy</span>
+                        </Button>
+                      </div>
+                      <div className="bg-muted/50 rounded-md p-4 max-h-[400px] overflow-y-auto">
+                        <p className="whitespace-pre-line">{currentSummary.content}</p>
+                      </div>
+                    </div>
+                    
+                    {currentSummary.keyPoints && currentSummary.keyPoints.length > 0 && (
+                      <>
+                        <Separator />
+                        
+                        <div>
+                          <h3 className="text-lg font-medium mb-2">Key Points</h3>
+                          <ul className="list-disc list-inside space-y-1 text-muted-foreground text-sm">
+                            {currentSummary.keyPoints.map((point, index) => (
+                              <li key={index}>{point}</li>
+                            ))}
+                          </ul>
+                        </div>
+                      </>
+                    )}
+                    
+                    {currentSummary.wasTruncated && (
+                      <Alert>
+                        <AlertCircle className="h-4 w-4" />
+                        <AlertTitle>Note</AlertTitle>
+                        <AlertDescription>
+                          The document was too large and was truncated for processing. Some information may be missing from the summary.
+                        </AlertDescription>
+                      </Alert>
+                    )}
+                  </div>
+                ) : isLoadingSummary ? (
+                  <div className="flex justify-center py-8">
+                    <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+                  </div>
+                ) : (
+                  <div className="text-center py-8">
+                    <p className="text-muted-foreground">
+                      No summary available for this document.
+                    </p>
+                  </div>
+                )}
+              </CardContent>
+              
+              {currentSummary && !documentAudio && (
+                <CardFooter>
+                  <Button 
+                    onClick={handleGenerateAudio}
+                    disabled={isGeneratingAudio || isAudioLoading}
+                    className="gap-2"
+                  >
+                    {isGeneratingAudio || isAudioLoading ? (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : (
+                      <Headphones className="h-4 w-4" />
+                    )}
+                    {isGeneratingAudio ? 'Generating Audio...' : 'Generate Audio Summary'}
+                  </Button>
+                </CardFooter>
+              )}
+            </Card>
+          </div>
+          
+          <div>
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Headphones className="h-5 w-5" />
+                  Audio Summary
+                </CardTitle>
+                <CardDescription>
+                  Listen to the generated audio summary
+                </CardDescription>
+              </CardHeader>
+              
+              <CardContent>
+                {documentAudio ? (
+                  <div className="space-y-4">
+                    <AudioPlayer src={documentAudio.fileUrl} title={documentAudio.title} />
+                    
+                    <Button 
+                      variant="outline" 
+                      className="w-full gap-2"
+                      onClick={() => {
+                        const link = document.createElement('a');
+                        link.href = documentAudio.fileUrl;
+                        link.download = `${documentAudio.title || 'audio-summary'}.${documentAudio.format || 'mp3'}`;
+                        document.body.appendChild(link);
+                        link.click();
+                        document.body.removeChild(link);
+                      }}
+                    >
+                      <Download className="h-4 w-4" />
+                      Download Audio
+                    </Button>
+                  </div>
+                ) : isGeneratingAudio ? (
+                  <div className="flex flex-col items-center justify-center py-8 text-center gap-3">
+                    <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+                    <p className="text-sm text-muted-foreground">
+                      Generating audio summary...
+                    </p>
+                  </div>
+                ) : currentSummary ? (
+                  <div className="flex flex-col items-center justify-center py-8 text-center gap-3">
+                    <p className="text-muted-foreground">
+                      No audio summary available yet.
+                    </p>
+                    <Button 
+                      onClick={handleGenerateAudio}
+                      disabled={isGeneratingAudio || isAudioLoading}
+                      className="gap-2"
+                    >
+                      {isGeneratingAudio || isAudioLoading ? (
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                      ) : (
+                        <Headphones className="h-4 w-4" />
+                      )}
+                      Generate Audio
+                    </Button>
+                  </div>
+                ) : (
+                  <div className="flex flex-col items-center justify-center py-8 text-center">
+                    <p className="text-muted-foreground">
+                      A summary is required before generating audio.
+                    </p>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
           </div>
         </div>
-
-        {/* Document content */}
-        <div className="px-6 py-4">
-          {!summary ? (
-            <div className="text-center py-10">
-              <p className="text-gray-600 mb-4">
-                This document hasn't been summarized yet.
-              </p>
-              <button
-                onClick={handleGenerateSummary}
-                disabled={isSummarizing}
-                className="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-primary hover:bg-primary/90 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary"
-              >
-                {isSummarizing ? (
-                  <>
-                    <div className="animate-spin mr-2 h-4 w-4 border-2 border-white border-t-transparent rounded-full"></div>
-                    Generating Summary...
-                  </>
-                ) : (
-                  <>
-                    <Zap className="mr-2 h-4 w-4" /> Generate Summary
-                  </>
-                )}
-              </button>
-            </div>
-          ) : (
-            <div>
-              {/* Summary / Key Points tabs */}
-              <div className="border-b border-gray-200">
-                <nav className="-mb-px flex space-x-6">
-                  <button
-                    onClick={() => setActiveTab("summary")}
-                    className={`whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm ${
-                      activeTab === "summary"
-                        ? "border-primary text-primary"
-                        : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
-                    }`}
-                  >
-                    Full Summary
-                  </button>
-                  <button
-                    onClick={() => setActiveTab("keyPoints")}
-                    className={`whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm ${
-                      activeTab === "keyPoints"
-                        ? "border-primary text-primary"
-                        : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
-                    }`}
-                  >
-                    Key Points
-                  </button>
-                </nav>
-              </div>
-
-              {/* Summary content */}
-              <div className="py-4">
-                {activeTab === "summary" ? (
-                  <div className="prose max-w-none">
-                    <h3 className="text-lg font-medium text-gray-900 mb-3">
-                      Summary
-                    </h3>
-                    <p className="whitespace-pre-line text-gray-700">
-                      {summary.content}
-                    </p>
-                  </div>
-                ) : (
-                  <div>
-                    <h3 className="text-lg font-medium text-gray-900 mb-3">
-                      Key Points
-                    </h3>
-                    <ul className="list-disc pl-5 space-y-2">
-                      {summary.keyPoints.map((point, index) => (
-                        <li key={index} className="text-gray-700">
-                          {point}
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-                )}
-              </div>
-
-              {/* Audio section */}
-              <div className="mt-6 pt-6 border-t border-gray-200">
-                <h3 className="text-lg font-medium text-gray-900 mb-4">
-                  Audio Summary
-                </h3>
-
-                {audio ? (
-                  <AudioPlayer audio={audio} />
-                ) : (
-                  <div className="bg-gray-50 p-6 rounded-lg text-center">
-                    <div className="flex justify-center mb-4">
-                      <Headphones className="h-8 w-8 text-primary" />
-                    </div>
-                    <p className="text-gray-600 mb-4">
-                      Generate an audio version of this summary to listen on the
-                      go.
-                    </p>
-                    <button
-                      onClick={handleGenerateAudio}
-                      disabled={isGeneratingAudio}
-                      className="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-primary hover:bg-primary/90 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary"
-                    >
-                      {isGeneratingAudio ? (
-                        <>
-                          <div className="animate-spin mr-2 h-4 w-4 border-2 border-white border-t-transparent rounded-full"></div>
-                          Generating Audio...
-                        </>
-                      ) : (
-                        <>
-                          <Headphones className="mr-2 h-4 w-4" /> Generate Audio
-                        </>
-                      )}
-                    </button>
-                  </div>
-                )}
-              </div>
-            </div>
-          )}
-        </div>
-      </div>
-    </Layout>
+      )}
+    </div>
   );
-};
-
-export default DocumentDetailPage;
+}

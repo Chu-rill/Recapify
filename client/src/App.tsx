@@ -1,54 +1,90 @@
-import React from "react";
-import { BrowserRouter, Routes, Route } from "react-router-dom";
-import { Toaster } from "./components/ui/toaster";
-import { Toaster as Sonner } from "./components/ui/sonner";
-import { TooltipProvider } from "./components/ui/tooltip";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { ThemeProvider } from "./components/ThemeProvider";
+import { useEffect } from "react";
+import {
+  BrowserRouter as Router,
+  Routes,
+  Route,
+  Navigate,
+} from "react-router-dom";
+import { Toaster } from "@/components/ui/sonner";
+import { ThemeProvider } from "@/components/theme-provider";
+import { useAuthStore } from "@/lib/store";
 
-import HomePage from "./pages/HomePage";
-import SignupPage from "./pages/SignupPage";
-import LoginPage from "./pages/LoginPage";
-import DashboardPage from "./pages/DashboardPage";
-import DocumentDetailPage from "./pages/DocumentDetailPage";
-import NotFoundPage from "./pages/NotFoundPage";
-import ProtectedRoute from "./components/ProtectedRoute";
+// Layout components
+import Layout from "@/components/layout/Layout";
+import ProtectedRoute from "@/components/auth/ProtectedRoute";
 
-// Create a new QueryClient instance inside the component to ensure it's created during rendering
-const App = () => {
-  const queryClient = new QueryClient();
+// Pages
+import HomePage from "@/pages/HomePage";
+import LoginPage from "@/pages/LoginPage";
+import SignupPage from "@/pages/SignupPage";
+import DashboardPage from "@/pages/DashboardPage";
+import DocumentDetailPage from "@/pages/DocumentDetailPage";
+import ProfilePage from "@/pages/ProfilePage";
+import NotFoundPage from "@/pages/NotFoundPage";
+
+function App() {
+  const { isAuthenticated, fetchUser } = useAuthStore();
+
+  useEffect(() => {
+    if (isAuthenticated) {
+      fetchUser();
+    }
+  }, [isAuthenticated, fetchUser]);
 
   return (
-    <React.StrictMode>
-      <QueryClientProvider client={queryClient}>
-        <ThemeProvider>
-          <TooltipProvider>
-            <BrowserRouter>
-              <Sonner position="top-right" />
-              <Toaster />
-              <Routes>
-                <Route path="/" element={<HomePage />} />
-                <Route path="/signup" element={<SignupPage />} />
-                <Route path="/login" element={<LoginPage />} />
+    <ThemeProvider defaultTheme="dark" storageKey="recapify-theme">
+      <Router>
+        <Routes>
+          <Route path="/" element={<Layout />}>
+            {/* Public routes */}
+            <Route index element={<HomePage />} />
+            <Route
+              path="login"
+              element={
+                isAuthenticated ? <Navigate to="/dashboard" /> : <LoginPage />
+              }
+            />
+            <Route
+              path="signup"
+              element={
+                isAuthenticated ? <Navigate to="/dashboard" /> : <SignupPage />
+              }
+            />
 
-                {/* Protected routes */}
-                <Route element={<ProtectedRoute />}>
-                  <Route path="/dashboard" element={<DashboardPage />} />
-                  <Route
-                    path="/document/:documentId"
-                    element={<DocumentDetailPage />}
-                  />
-                </Route>
+            {/* Protected routes */}
+            <Route
+              path="dashboard"
+              element={
+                <ProtectedRoute>
+                  <DashboardPage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="documents/:documentId"
+              element={
+                <ProtectedRoute>
+                  <DocumentDetailPage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="profile"
+              element={
+                <ProtectedRoute>
+                  <ProfilePage />
+                </ProtectedRoute>
+              }
+            />
 
-                {/* Catch-all route */}
-                <Route path="*" element={<NotFoundPage />} />
-              </Routes>
-            </BrowserRouter>
-          </TooltipProvider>
-        </ThemeProvider>
-      </QueryClientProvider>
-    </React.StrictMode>
+            {/* 404 route */}
+            <Route path="*" element={<NotFoundPage />} />
+          </Route>
+        </Routes>
+        <Toaster position="top-right" />
+      </Router>
+    </ThemeProvider>
   );
-};
+}
 
 export default App;

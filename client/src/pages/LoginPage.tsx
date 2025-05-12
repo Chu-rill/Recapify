@@ -1,245 +1,153 @@
-import { useState, useEffect } from "react";
-import { Link, useNavigate } from "react-router-dom";
-import { useForm } from "react-hook-form";
-import { z } from "zod";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { login, googleAuth } from "../services/auth-service";
-import { useAuthStore } from "../store/authStore";
-import Layout from "../components/Layout";
-import { toast } from "../components/ui/sonner";
-import { LoginRequest } from "../types/auth";
-// import { Button } from "../components/ui/button";
+import { useState } from 'react';
+import { useNavigate, Link } from 'react-router-dom';
+import { z } from 'zod';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { toast } from 'sonner';
+import {
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from '@/components/ui/form';
+import { Input } from '@/components/ui/input';
+import { Button } from '@/components/ui/button';
+import { useAuthStore } from '@/lib/store';
+import { EyeIcon, EyeOffIcon, Loader2 } from 'lucide-react';
 
+// Form validation schema
 const loginSchema = z.object({
-  email: z.string().email("Invalid email address"),
-  password: z.string().min(1, "Password is required"),
+  email: z
+    .string()
+    .min(1, 'Email is required')
+    .email('Please enter a valid email'),
+  password: z
+    .string()
+    .min(6, 'Password must be at least 6 characters'),
 });
 
 type LoginFormValues = z.infer<typeof loginSchema>;
 
-// Define a type for the Google window object
-declare global {
-  interface Window {
-    google?: {
-      accounts: {
-        id: {
-          initialize: (config: any) => void;
-          renderButton: (element: HTMLElement, options: any) => void;
-          prompt: () => void;
-        };
-      };
-    };
-  }
-}
-
-const LoginPage = () => {
-  const { setUser, setAuthenticated } = useAuthStore();
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [googleLoaded, setGoogleLoaded] = useState(false);
+export default function LoginPage() {
   const navigate = useNavigate();
-
-  const {
-    register,
-    handleSubmit,
-    formState: { errors },
-  } = useForm<LoginFormValues>({
+  const { login, isLoading } = useAuthStore();
+  const [showPassword, setShowPassword] = useState(false);
+  
+  // Initialize form
+  const form = useForm<LoginFormValues>({
     resolver: zodResolver(loginSchema),
+    defaultValues: {
+      email: '',
+      password: '',
+    },
   });
-
-  // Initialize Google Sign In
-  useEffect(() => {
-    const script = document.createElement("script");
-    script.src = "https://accounts.google.com/gsi/client";
-    script.async = true;
-    script.defer = true;
-    script.onload = initializeGoogleSignIn;
-    document.body.appendChild(script);
-
-    return () => {
-      document.body.removeChild(script);
-    };
-  }, []);
-
-  const initializeGoogleSignIn = () => {
-    if (window.google) {
-      window.google.accounts.id.initialize({
-        client_id:
-          "29145965775-epc378lfnt17qtks08mslnhebfvdrrpm.apps.googleusercontent.com", // Replace with your Google client ID
-        callback: handleGoogleSignIn,
-      });
-      setGoogleLoaded(true);
-    }
-  };
-
-  const handleGoogleSignIn = async (response: any) => {
+  
+  const onSubmit = async (values: LoginFormValues) => {
     try {
-      setIsSubmitting(true);
-      const result = await googleAuth(response.credential);
-
-      // Set authenticated user in store with required isVerified field
-      setUser({
-        ...result.data,
-        isVerified: result.data.isVerified ?? false,
-      });
-      setAuthenticated(true);
-
-      toast.success("Logged in with Google successfully");
-      navigate("/dashboard");
-    } catch (error: any) {
-      console.error("Google login error:", error);
-      toast.error(
-        error.response?.data?.message || "Failed to login with Google"
-      );
-    } finally {
-      setIsSubmitting(false);
+      await login(values.email, values.password);
+      toast.success('Login successful!');
+      navigate('/dashboard');
+    } catch (error) {
+      toast.error('Login failed. Please check your credentials and try again.');
     }
   };
-
-  // Render Google button when the API is loaded
-  useEffect(() => {
-    if (googleLoaded && window.google) {
-      const googleButtonDiv = document.getElementById("google-signin-button");
-      if (googleButtonDiv) {
-        window.google.accounts.id.renderButton(googleButtonDiv, {
-          type: "standard",
-          theme: "outline",
-          size: "large",
-          text: "signin_with",
-          shape: "rectangular",
-          width: "100%",
-        });
-      }
-    }
-  }, [googleLoaded]);
-
-  const onSubmit = async (data: LoginFormValues) => {
-    try {
-      setIsSubmitting(true);
-      // Ensure we pass a valid LoginRequest object
-      const loginData: LoginRequest = {
-        email: data.email,
-        password: data.password,
-      };
-      const response = await login(loginData);
-
-      // Set authenticated user in store with required isVerified field
-      setUser({
-        ...response.data,
-        isVerified: response.data.isVerified ?? false,
-      });
-      setAuthenticated(true);
-
-      toast.success("Logged in successfully");
-      navigate("/dashboard");
-    } catch (error: any) {
-      console.error("Login error:", error);
-      toast.error(error.response?.data?.message || "Invalid credentials");
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
-
+  
   return (
-    <Layout>
-      <div className="max-w-md mx-auto mt-8">
-        <div className="bg-white dark:bg-gray-800 p-8 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700">
-          <h1 className="text-2xl font-bold text-center text-gray-900 dark:text-gray-100 mb-6">
-            Log In to Recapify
-          </h1>
-
-          <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-            <div>
-              <label
-                htmlFor="email"
-                className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
-              >
-                Email
-              </label>
-              <input
-                id="email"
-                type="email"
-                {...register("email")}
-                className={`w-full px-4 py-2 border ${
-                  errors.email
-                    ? "border-red-500"
-                    : "border-gray-300 dark:border-gray-600"
-                } rounded-md shadow-sm focus:ring-primary focus:border-primary bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100`}
-                placeholder="Enter your email"
-              />
-              {errors.email && (
-                <p className="mt-1 text-sm text-red-600 dark:text-red-400">
-                  {errors.email.message}
-                </p>
-              )}
-            </div>
-
-            <div>
-              <label
-                htmlFor="password"
-                className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
-              >
-                Password
-              </label>
-              <input
-                id="password"
-                type="password"
-                {...register("password")}
-                className={`w-full px-4 py-2 border ${
-                  errors.password
-                    ? "border-red-500"
-                    : "border-gray-300 dark:border-gray-600"
-                } rounded-md shadow-sm focus:ring-primary focus:border-primary bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100`}
-                placeholder="Enter your password"
-              />
-              {errors.password && (
-                <p className="mt-1 text-sm text-red-600 dark:text-red-400">
-                  {errors.password.message}
-                </p>
-              )}
-            </div>
-
-            <button
-              type="submit"
-              disabled={isSubmitting}
-              className="w-full py-2 px-4 bg-primary text-white font-medium rounded-md hover:bg-primary/90 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary disabled:opacity-50"
-            >
-              {isSubmitting ? "Logging in..." : "Log In"}
-            </button>
-          </form>
-
-          <div className="mt-6">
-            <div className="relative">
-              <div className="absolute inset-0 flex items-center">
-                <div className="w-full border-t border-gray-300 dark:border-gray-600"></div>
-              </div>
-              <div className="relative flex justify-center text-sm">
-                <span className="px-2 bg-white dark:bg-gray-800 text-gray-500 dark:text-gray-400">
-                  Or continue with
-                </span>
-              </div>
-            </div>
-
-            <div className="mt-4">
-              <div
-                id="google-signin-button"
-                className="flex justify-center"
-              ></div>
-            </div>
-          </div>
-
-          <p className="mt-6 text-center text-sm text-gray-600 dark:text-gray-400">
-            Don't have an account?{" "}
-            <Link
-              to="/signup"
-              className="text-primary font-medium hover:underline"
-            >
-              Sign up
-            </Link>
+    <div className="container relative flex pt-10 pb-20 md:pb-32 flex-col items-center justify-center lg:px-0">
+      <div className="mx-auto flex w-full flex-col justify-center space-y-6 sm:w-[350px]">
+        <div className="flex flex-col space-y-2 text-center">
+          <h1 className="text-2xl font-semibold tracking-tight">Welcome back</h1>
+          <p className="text-sm text-muted-foreground">
+            Enter your credentials to sign in to your account
           </p>
         </div>
+        
+        <div className="grid gap-6">
+          <Form {...form}>
+            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+              <FormField
+                control={form.control}
+                name="email"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Email</FormLabel>
+                    <FormControl>
+                      <Input 
+                        placeholder="email@example.com" 
+                        {...field} 
+                        disabled={isLoading}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              
+              <FormField
+                control={form.control}
+                name="password"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Password</FormLabel>
+                    <FormControl>
+                      <div className="relative">
+                        <Input 
+                          type={showPassword ? 'text' : 'password'} 
+                          placeholder="••••••••" 
+                          {...field} 
+                          disabled={isLoading}
+                        />
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon"
+                          className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
+                          onClick={() => setShowPassword(!showPassword)}
+                          disabled={isLoading}
+                        >
+                          {showPassword ? (
+                            <EyeOffIcon className="h-4 w-4" />
+                          ) : (
+                            <EyeIcon className="h-4 w-4" />
+                          )}
+                          <span className="sr-only">
+                            {showPassword ? 'Hide password' : 'Show password'}
+                          </span>
+                        </Button>
+                      </div>
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              
+              <Button 
+                type="submit" 
+                className="w-full" 
+                disabled={isLoading}
+              >
+                {isLoading ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Signing in...
+                  </>
+                ) : (
+                  'Sign In'
+                )}
+              </Button>
+            </form>
+          </Form>
+          
+          <div className="text-center text-sm">
+            Don't have an account?{' '}
+            <Link to="/signup" className="underline underline-offset-4 hover:text-primary">
+              Sign up
+            </Link>
+          </div>
+        </div>
       </div>
-    </Layout>
+    </div>
   );
-};
-
-export default LoginPage;
+}

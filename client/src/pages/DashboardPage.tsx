@@ -1,133 +1,197 @@
-import { useEffect, useState } from "react";
-import Layout from "../components/Layout";
-import FileUpload from "../components/FileUpload";
-import DocumentCard from "../components/DocumentCard";
-import DeleteAccountModal from "../components/DeleteAccountModal";
-import { useDocumentsStore } from "../store/documentsStore";
-import { getDocuments } from "../services/document-service";
-import { Document } from "../types/document";
-import { toast } from "../components/ui/sonner";
-import { Search } from "lucide-react";
+import { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { toast } from 'sonner';
+import { useDocumentStore, useAudioStore } from '@/lib/store';
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Progress } from '@/components/ui/progress';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import UploadDocumentForm from '@/components/documents/UploadDocumentForm';
+import DocumentsList from '@/components/documents/DocumentsList';
+import AudioList from '@/components/audio/AudioList';
+import { AlertCircle, Loader2 } from 'lucide-react';
 
-const DashboardPage = () => {
-  const { documents, setDocuments, isLoading, setLoading, error, setError } =
-    useDocumentsStore();
-  const [searchTerm, setSearchTerm] = useState("");
-  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
-
+export default function DashboardPage() {
+  const navigate = useNavigate();
+  const [activeTab, setActiveTab] = useState('documents');
+  
+  const { 
+    documents, 
+    isLoading: isDocumentLoading, 
+    error: documentError,
+    uploadProgress,
+    fetchDocuments
+  } = useDocumentStore();
+  
+  const {
+    audioList,
+    isLoading: isAudioLoading,
+    error: audioError,
+    fetchAudioList
+  } = useAudioStore();
+  
   useEffect(() => {
-    const fetchDocuments = async () => {
+    const loadDashboardData = async () => {
       try {
-        setLoading(true);
-        const response = await getDocuments();
-
-        // Add a status field to each document if it doesn't exist
-        const docsWithStatus = response.data.map((doc: Document) => ({
-          ...doc,
-          status: doc.status || "completed", // Default to 'completed' if not provided by API
-        }));
-
-        setDocuments(docsWithStatus);
-      } catch (err) {
-        console.error("Error fetching documents:", err);
-        setError("Failed to load documents");
-        toast.error("Failed to load documents");
-      } finally {
-        setLoading(false);
+        await fetchDocuments();
+        await fetchAudioList();
+      } catch (error) {
+        toast.error('Failed to load dashboard data');
       }
     };
-
-    fetchDocuments();
-  }, [setDocuments, setLoading, setError]);
-
-  const filteredDocuments = documents.filter((doc) =>
-    doc.name.toLowerCase().includes(searchTerm.toLowerCase())
-  );
-
+    
+    loadDashboardData();
+  }, [fetchDocuments, fetchAudioList]);
+  
+  const isLoading = isDocumentLoading || isAudioLoading;
+  const hasError = documentError || audioError;
+  
   return (
-    <Layout>
-      <div className="mb-8">
-        <h1 className="text-3xl font-bold text-gray-900 mb-2">Dashboard</h1>
-        <p className="text-gray-600">
-          Upload documents, view summaries, and generate audio
-        </p>
-      </div>
-
-      <div className="grid md:grid-cols-3 gap-8">
-        <div className="md:col-span-1">
-          <FileUpload />
-
-          <div className="mt-8 bg-white p-5 rounded-lg shadow-sm border border-gray-200">
-            <h2 className="text-lg font-medium text-gray-900 mb-4">
-              Account Settings
-            </h2>
-            <button
-              onClick={() => setIsDeleteModalOpen(true)}
-              className="w-full py-2 px-4 text-red-600 border border-red-300 rounded-md hover:bg-red-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500"
-            >
-              Delete Account
-            </button>
-          </div>
+    <div className="container py-10">
+      <div className="flex flex-col space-y-6">
+        <div className="flex flex-col space-y-2">
+          <h1 className="text-3xl font-bold tracking-tight">Dashboard</h1>
+          <p className="text-muted-foreground">
+            Upload documents, view summaries, and generate audio.
+          </p>
         </div>
-
-        <div className="md:col-span-2">
-          <div className="bg-white p-5 rounded-lg shadow-sm border border-gray-200 mb-6">
-            <h2 className="text-lg font-medium text-gray-900 mb-4">
-              Your Documents
-            </h2>
-
-            <div className="relative mb-6">
-              <div className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
-                <Search className="w-5 h-5 text-gray-400" />
-              </div>
-              <input
-                type="text"
-                placeholder="Search documents..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-primary focus:border-primary block w-full pl-10 p-2.5"
-              />
-            </div>
-
-            {isLoading ? (
-              <div className="flex justify-center items-center py-10">
-                <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary"></div>
-              </div>
-            ) : error ? (
-              <div className="text-center py-10">
-                <p className="text-red-500">{error}</p>
-                <button
-                  onClick={() => window.location.reload()}
-                  className="mt-2 text-primary hover:underline"
-                >
-                  Try again
-                </button>
-              </div>
-            ) : filteredDocuments.length === 0 ? (
-              <div className="text-center py-10 text-gray-500">
-                {searchTerm ? (
-                  <p>No documents match your search.</p>
+        
+        {hasError && (
+          <Alert variant="destructive">
+            <AlertCircle className="h-4 w-4" />
+            <AlertDescription>
+              {documentError || audioError}
+            </AlertDescription>
+          </Alert>
+        )}
+        
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <Card>
+            <CardHeader>
+              <CardTitle>Upload Document</CardTitle>
+              <CardDescription>
+                Upload a document to generate an AI summary
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <UploadDocumentForm />
+              
+              {uploadProgress > 0 && uploadProgress < 100 && (
+                <div className="mt-4 space-y-2">
+                  <Progress value={uploadProgress} className="w-full" />
+                  <p className="text-xs text-center text-muted-foreground">
+                    Uploading: {uploadProgress}%
+                  </p>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+          
+          <Card className="md:col-span-2">
+            <CardHeader>
+              <CardTitle>Recent Documents</CardTitle>
+              <CardDescription>
+                Your recently uploaded documents and summaries
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              {isLoading ? (
+                <div className="flex justify-center py-8">
+                  <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+                </div>
+              ) : documents.length === 0 ? (
+                <div className="flex flex-col items-center justify-center py-8 text-center">
+                  <p className="text-muted-foreground mb-4">
+                    You haven't uploaded any documents yet.
+                  </p>
+                  <Button variant="outline" onClick={() => document.getElementById('file-upload')?.click()}>
+                    Upload Your First Document
+                  </Button>
+                </div>
+              ) : (
+                <div className="overflow-hidden rounded-md">
+                  <DocumentsList documents={documents.slice(0, 3)} />
+                </div>
+              )}
+            </CardContent>
+            <CardFooter>
+              <Button 
+                variant="ghost" 
+                className="w-full"
+                onClick={() => setActiveTab('documents')}
+              >
+                View All Documents
+              </Button>
+            </CardFooter>
+          </Card>
+        </div>
+        
+        <Tabs defaultValue="documents" value={activeTab} onValueChange={setActiveTab}>
+          <TabsList>
+            <TabsTrigger value="documents">Documents</TabsTrigger>
+            <TabsTrigger value="audio">Audio Summaries</TabsTrigger>
+          </TabsList>
+          <TabsContent value="documents" className="mt-6">
+            <Card>
+              <CardHeader>
+                <CardTitle>All Documents</CardTitle>
+                <CardDescription>
+                  Manage your documents and summaries
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                {isDocumentLoading ? (
+                  <div className="flex justify-center py-8">
+                    <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+                  </div>
+                ) : documents.length === 0 ? (
+                  <div className="flex flex-col items-center justify-center py-8 text-center">
+                    <p className="text-muted-foreground mb-4">
+                      You haven't uploaded any documents yet.
+                    </p>
+                    <Button variant="outline" onClick={() => document.getElementById('file-upload')?.click()}>
+                      Upload Your First Document
+                    </Button>
+                  </div>
                 ) : (
-                  <p>You haven't uploaded any documents yet.</p>
+                  <div className="overflow-hidden rounded-md">
+                    <DocumentsList documents={documents} />
+                  </div>
                 )}
-              </div>
-            ) : (
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                {filteredDocuments.map((doc) => (
-                  <DocumentCard key={doc.id} document={doc} />
-                ))}
-              </div>
-            )}
-          </div>
-        </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+          <TabsContent value="audio" className="mt-6">
+            <Card>
+              <CardHeader>
+                <CardTitle>Audio Summaries</CardTitle>
+                <CardDescription>
+                  Listen to your generated audio summaries
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                {isAudioLoading ? (
+                  <div className="flex justify-center py-8">
+                    <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+                  </div>
+                ) : audioList.length === 0 ? (
+                  <div className="flex flex-col items-center justify-center py-8 text-center">
+                    <p className="text-muted-foreground mb-4">
+                      You haven't generated any audio summaries yet.
+                    </p>
+                    <Button variant="outline" onClick={() => setActiveTab('documents')}>
+                      View Documents to Generate Audio
+                    </Button>
+                  </div>
+                ) : (
+                  <AudioList audioList={audioList} />
+                )}
+              </CardContent>
+            </Card>
+          </TabsContent>
+        </Tabs>
       </div>
-
-      <DeleteAccountModal
-        isOpen={isDeleteModalOpen}
-        onClose={() => setIsDeleteModalOpen(false)}
-      />
-    </Layout>
+    </div>
   );
-};
-
-export default DashboardPage;
+}
