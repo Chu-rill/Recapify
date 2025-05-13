@@ -16,7 +16,9 @@ interface AuthState {
     email: string,
     password: string,
     phone?: string
-  ) => Promise<void>;
+  ) => Promise<User>;
+  validateOTP: (email: string, OTP: string) => Promise<void>;
+  resendOTP: (email: string) => Promise<void>;
   logout: () => void;
   fetchUser: () => Promise<void>;
   deleteAccount: () => Promise<void>;
@@ -92,12 +94,43 @@ export const useAuthStore = create<AuthState>()(
             );
             set({
               user: response.data,
+              isAuthenticated: false,
+              isLoading: false,
+            });
+            return response.data;
+          } catch (error) {
+            const message =
+              error instanceof Error ? error.message : "Signup failed";
+            set({ error: message, isLoading: false });
+            throw error;
+          }
+        },
+
+        validateOTP: async (email, OTP) => {
+          set({ isLoading: true, error: null });
+          try {
+            const response = await authService.validateOTP(email, OTP);
+            set({
+              user: response.data,
               isAuthenticated: true,
               isLoading: false,
             });
           } catch (error) {
             const message =
-              error instanceof Error ? error.message : "Signup failed";
+              error instanceof Error ? error.message : "OTP validation failed";
+            set({ error: message, isLoading: false });
+            throw error;
+          }
+        },
+
+        resendOTP: async (email) => {
+          set({ isLoading: true, error: null });
+          try {
+            await authService.resendOTP(email);
+            set({ isLoading: false });
+          } catch (error) {
+            const message =
+              error instanceof Error ? error.message : "Resend OTP failed";
             set({ error: message, isLoading: false });
             throw error;
           }

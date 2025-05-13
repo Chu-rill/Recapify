@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import { useState } from "react";
 import {
   InputOTP,
   InputOTPGroup,
@@ -7,46 +7,42 @@ import {
 } from "../components/ui/input-otp";
 import { Button } from "../components/ui/button";
 import { Card, CardContent } from "../components/ui/card";
-import { Input } from "../components/ui/input";
 import { toast } from "sonner";
 import { Link, useNavigate } from "react-router-dom";
 import { authService } from "../services/auth";
 
 const Otp = () => {
   const [otp, setOtp] = useState("");
-  const [email, setEmail] = useState("");
   const [loading, setLoading] = useState(false);
+  const email = sessionStorage.getItem("otpEmail");
   const navigate = useNavigate();
 
-  // const handleVerify = async () => {
-  //   if (!email) {
-  //     toast.error("Please enter your email.");
-  //     return;
-  //   }
-  //   if (otp.length !== 6) {
-  //     toast.error("Please enter a valid 6-digit OTP");
-  //     return;
-  //   }
+  const handleVerify = async () => {
+    if (!email) {
+      toast.error("Email session expired. Please sign up again.");
+      return;
+    }
+    if (otp.length !== 6) {
+      toast.error("Please enter a valid 6-digit OTP");
+      return;
+    }
 
-  //   setLoading(true);
-  //   try {
-  //     const response = await authService.validateOTP({ email, OTP: otp });
-  //     if (response.statusCode === 200) {
-  //       toast.success("OTP verified successfully!");
-  //       localStorage.setItem("token", response.token || ""); // Store token
-  //       navigate("/"); // Redirect to home
-  //     } else {
-  //       toast.error(response.message || "Invalid OTP");
-  //     }
-  //   } catch (error) {
-  //     toast.error(
-  //       error?.response?.data?.message ||
-  //         "An error occurred during verification"
-  //     );
-  //   } finally {
-  //     setLoading(false);
-  //   }
-  // };
+    setLoading(true);
+    try {
+      const response = await authService.validateOTP(email, otp);
+      if (response.statusCode === 200) {
+        toast.success("OTP verified successfully!");
+        localStorage.setItem("token", response.token || ""); // Store token
+        navigate("/dashboard"); //
+      } else {
+        toast.error(response.message || "Invalid OTP");
+      }
+    } catch (error) {
+      toast.error("An error occurred during verification");
+    } finally {
+      setLoading(false);
+    }
+  };
 
   return (
     <div className="flex items-center justify-center min-h-screen dark:bg-black">
@@ -75,7 +71,7 @@ const Otp = () => {
 
           <Button
             className="w-full bg-gradient-to-r from-blue-600 to-violet-600 hover:from-blue-700 hover:to-violet-700 text-white cursor-pointer"
-            // onClick={handleVerify}
+            onClick={handleVerify}
             disabled={otp.length < 6 || loading}
           >
             {loading ? "Verifying..." : "Verify OTP"}

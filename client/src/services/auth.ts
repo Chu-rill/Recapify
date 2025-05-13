@@ -16,9 +16,9 @@ export const authService = {
       phone,
     });
 
-    if (response.data.token) {
-      localStorage.setItem("token", response.data.token);
-    }
+    // if (response.data.token) {
+    //   localStorage.setItem("token", response.data.token);
+    // }
 
     return response.data;
   },
@@ -34,6 +34,25 @@ export const authService = {
       localStorage.setItem("token", response.data.token);
     }
 
+    return response.data;
+  },
+
+  // Validate OTP
+  async validateOTP(email: string, OTP: string) {
+    const response = await api.post<AuthResponse>("/auth/validateOTP", {
+      email,
+      OTP,
+    });
+    if (response.data.token) {
+      localStorage.setItem("token", response.data.token);
+    }
+    return response.data;
+  },
+  // Resend OTP
+  async resendOTP(email: string) {
+    const response = await api.post<AuthResponse>("/auth/resendOTP", {
+      email,
+    });
     return response.data;
   },
 
