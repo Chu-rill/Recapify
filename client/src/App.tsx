@@ -21,6 +21,9 @@ import DashboardPage from "@/pages/DashboardPage";
 import DocumentDetailPage from "@/pages/DocumentDetailPage";
 import ProfilePage from "@/pages/ProfilePage";
 import NotFoundPage from "@/pages/NotFoundPage";
+import GoogleOAuthCallback from "./components/auth/GoogleOAuthCallback";
+import Otp from "./pages/Otp";
+import ResendOtpPage from "./pages/ResendOtpPage";
 
 function App() {
   const { isAuthenticated, fetchUser } = useAuthStore();
@@ -50,6 +53,9 @@ function App() {
                 isAuthenticated ? <Navigate to="/dashboard" /> : <SignupPage />
               }
             />
+            <Route path="/oauth-redirect" element={<GoogleOAuthCallback />} />
+            <Route path="/otp" element={<Otp />} />
+            <Route path="/resend-otp" element={<ResendOtpPage />} />
 
             {/* Protected routes */}
             <Route

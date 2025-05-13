@@ -36,7 +36,7 @@ type SignupFormValues = z.infer<typeof signupSchema>;
 
 export default function SignupPage() {
   const navigate = useNavigate();
-  const { signup, signupWithGoogle, isLoading } = useAuthStore();
+  const { signup, loginWithGoogle, isLoading } = useAuthStore();
   const [showPassword, setShowPassword] = useState(false);
   const [isGoogleLoading, setIsGoogleLoading] = useState(false);
 
@@ -69,7 +69,7 @@ export default function SignupPage() {
   const handleGoogleSignup = async () => {
     setIsGoogleLoading(true);
     try {
-      await signupWithGoogle();
+      await loginWithGoogle();
       toast.success("Account created successfully with Google!");
       navigate("/dashboard");
     } catch (error) {
@@ -232,10 +232,14 @@ export default function SignupPage() {
               )}
             />
 
-            <Button type="submit" className="w-full h-10" disabled={isLoading}>
+            <Button
+              type="submit"
+              className="w-full h-10 bg-gradient-to-r from-blue-600 to-violet-600 hover:from-blue-700 hover:to-violet-700"
+              disabled={isLoading}
+            >
               {isLoading ? (
                 <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin bg-gradient-to-r from-blue-600 to-violet-600 hover:from-blue-700 hover:to-violet-700" />
                   Creating account...
                 </>
               ) : (

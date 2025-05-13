@@ -8,6 +8,8 @@ interface AuthState {
   isLoading: boolean;
   error: string | null;
   isAuthenticated: boolean;
+  loginWithGoogle: () => Promise<void>;
+  handleGoogleCallback: (token: string) => Promise<void>;
   login: (email: string, password: string) => Promise<void>;
   signup: (
     username: string,
@@ -41,6 +43,39 @@ export const useAuthStore = create<AuthState>()(
           } catch (error) {
             const message =
               error instanceof Error ? error.message : "Login failed";
+            set({ error: message, isLoading: false });
+            throw error;
+          }
+        },
+
+        loginWithGoogle: async () => {
+          set({ isLoading: true, error: null });
+          try {
+            await authService.loginWithGoogle();
+            // Note: This function redirects to Google and doesn't return user data
+            // The actual authentication happens in the callback
+          } catch (error) {
+            const message =
+              error instanceof Error ? error.message : "Google login failed";
+            set({ error: message, isLoading: false });
+            throw error;
+          }
+        },
+
+        handleGoogleCallback: async (token: string) => {
+          set({ isLoading: true, error: null });
+          try {
+            const response = await authService.handleGoogleCallback(token);
+            set({
+              user: response.data,
+              isAuthenticated: true,
+              isLoading: false,
+            });
+          } catch (error) {
+            const message =
+              error instanceof Error
+                ? error.message
+                : "Google authentication failed";
             set({ error: message, isLoading: false });
             throw error;
           }

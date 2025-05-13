@@ -191,10 +191,14 @@ export default function LoginPage() {
               </Link>
             </div>
 
-            <Button type="submit" className="w-full h-10" disabled={isLoading}>
+            <Button
+              type="submit"
+              className="w-full h-10 bg-gradient-to-r from-blue-600 to-violet-600 hover:from-blue-700 hover:to-violet-700"
+              disabled={isLoading}
+            >
               {isLoading ? (
                 <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin bg-gradient-to-r from-blue-600 to-violet-600 hover:from-blue-700 hover:to-violet-700" />
                   Signing in...
                 </>
               ) : (
