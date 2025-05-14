@@ -1,6 +1,6 @@
 import { create } from "zustand";
 import { devtools, persist } from "zustand/middleware";
-import { User, Document, Summary, Audio } from "../types";
+import { User, Document, Summary, Audio, AllSummaryResponse } from "../types";
 import { authService } from "../services/auth";
 
 interface AuthState {
@@ -433,6 +433,81 @@ export const useAudioStore = create<AudioState>()(
         isLoading: false,
         error: null,
       });
+    },
+  }))
+);
+
+interface SummaryState {
+  summaryList: Summary[];
+  fetchSummaryList: (documentId: string) => Promise<Summary>;
+  fetchAllSummaryList: () => Promise<AllSummaryResponse>;
+  generateSummary: (documentId: string) => Promise<Summary>;
+  isLoading: boolean;
+  error: string | null;
+}
+
+export const useSummaryStore = create<SummaryState>()(
+  devtools((set, get) => ({
+    summaryList: [],
+    isLoading: false,
+    error: null,
+    fetchSummaryList: async (documentId: string) => {
+      set({ isLoading: true, error: null });
+      try {
+        const summary = await import("../services/summary").then((module) =>
+          module.summaryService.getSummary(documentId)
+        );
+
+        set({ summaryList: [...get().summaryList, summary], isLoading: false });
+        return summary;
+      } catch (error) {
+        const message =
+          error instanceof Error
+            ? error.message
+            : "Failed to fetch summary list";
+        set({ error: message, isLoading: false });
+        throw error;
+      }
+    },
+    fetchAllSummaryList: async () => {
+      set({ isLoading: true, error: null });
+      try {
+        const response = await import("../services/summary").then((module) =>
+          module.summaryService.getAllSummary()
+        );
+
+        set({ summaryList: response.data.data, isLoading: false });
+        return {
+          status: response.data.status || "success",
+          error: false,
+          statusCode: response.status,
+          data: response.data.data,
+          message: response.data.message || "Successfully fetched summary list",
+        };
+      } catch (error) {
+        const message =
+          error instanceof Error
+            ? error.message
+            : "Failed to fetch all summary lists";
+        set({ error: message, isLoading: false });
+        throw error;
+      }
+    },
+    generateSummary: async (documentId: string) => {
+      set({ isLoading: true, error: null });
+      try {
+        const summary = await import("../services/summary").then((module) =>
+          module.summaryService.createSummary(documentId)
+        );
+
+        set({ summaryList: [...get().summaryList, summary], isLoading: false });
+        return summary;
+      } catch (error) {
+        const message =
+          error instanceof Error ? error.message : "Failed to generate summary";
+        set({ error: message, isLoading: false });
+        throw error;
+      }
     },
   }))
 );

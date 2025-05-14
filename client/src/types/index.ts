@@ -22,7 +22,7 @@ export interface Document {
   fileType: string;
   userId: string;
   createdAt: string;
-  status?: 'pending' | 'processing' | 'completed' | 'failed';
+  status?: "pending" | "processing" | "completed" | "failed";
 }
 
 export interface DocumentResponse {
@@ -58,6 +58,14 @@ export interface SummaryResponse {
   error: boolean;
   statusCode: number;
   data: Summary;
+  message: string;
+}
+
+export interface AllSummaryResponse {
+  status: string;
+  error: boolean;
+  statusCode: number;
+  data: Summary[];
   message: string;
 }
 
