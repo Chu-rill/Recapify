@@ -16,7 +16,7 @@ interface AuthState {
     email: string,
     password: string,
     phone?: string
-  ) => Promise<User>;
+  ) => Promise<void>;
   validateOTP: (email: string, OTP: string) => Promise<void>;
   resendOTP: (email: string) => Promise<void>;
   logout: () => void;
@@ -97,7 +97,6 @@ export const useAuthStore = create<AuthState>()(
               isAuthenticated: false,
               isLoading: false,
             });
-            return response.data;
           } catch (error) {
             const message =
               error instanceof Error ? error.message : "Signup failed";

@@ -9,17 +9,19 @@ import { Button } from "../components/ui/button";
 import { Card, CardContent } from "../components/ui/card";
 import { toast } from "sonner";
 import { Link, useNavigate } from "react-router-dom";
-import { authService } from "../services/auth";
+import { useAuthStore } from "../lib/store";
 
 const Otp = () => {
   const [otp, setOtp] = useState("");
   const [loading, setLoading] = useState(false);
-  const email = sessionStorage.getItem("otpEmail");
+  const user = useAuthStore((state) => state.user);
+  const { validateOTP } = useAuthStore();
   const navigate = useNavigate();
 
   const handleVerify = async () => {
-    if (!email) {
+    if (!user?.email) {
       toast.error("Email session expired. Please sign up again.");
+      navigate("/signup");
       return;
     }
     if (otp.length !== 6) {
@@ -29,14 +31,10 @@ const Otp = () => {
 
     setLoading(true);
     try {
-      const response = await authService.validateOTP(email, otp);
-      if (response.statusCode === 200) {
-        toast.success("OTP verified successfully!");
-        localStorage.setItem("token", response.token || ""); // Store token
-        navigate("/dashboard"); //
-      } else {
-        toast.error(response.message || "Invalid OTP");
-      }
+      await validateOTP(user.email, otp);
+
+      toast.success("OTP verified successfully!");
+      navigate("/dashboard"); //
     } catch (error) {
       toast.error("An error occurred during verification");
     } finally {

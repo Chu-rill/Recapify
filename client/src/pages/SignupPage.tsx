@@ -53,16 +53,13 @@ export default function SignupPage() {
 
   const onSubmit = async (values: SignupFormValues) => {
     try {
-      const res = await signup(
+      await signup(
         values.username,
         values.email,
         values.password,
         values.phone
       );
-      sessionStorage.setItem("otpEmail", res.email);
-      setTimeout(() => {
-        sessionStorage.removeItem("otpEmail");
-      }, 5 * 60 * 1000); // 5 minutes
+
       toast.success("Account created successfully! Please verify your email.");
       navigate("/otp");
     } catch (error) {

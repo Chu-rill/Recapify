@@ -44,6 +44,7 @@ export const authService = {
       OTP,
     });
     if (response.data.token) {
+      console.log(response);
       localStorage.setItem("token", response.data.token);
     }
     return response.data;
