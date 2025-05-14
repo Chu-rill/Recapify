@@ -252,6 +252,21 @@ export const useDocumentStore = create<DocumentState>()(
           uploadProgress: 100,
         });
 
+        // Generate summary immediately after upload
+        try {
+          const summary = await import("../services/summary").then((module) =>
+            module.summaryService.createSummary(document.id)
+          );
+          set({ currentSummary: summary });
+        } catch (summaryError) {
+          const message =
+            summaryError instanceof Error
+              ? summaryError.message
+              : "Failed to generate summary";
+          set({ error: message });
+          // toast.error(message); // Notify user about summary generation failure
+        }
+
         return document;
       } catch (error) {
         const message =
@@ -454,12 +469,15 @@ export const useSummaryStore = create<SummaryState>()(
     fetchSummaryList: async (documentId: string) => {
       set({ isLoading: true, error: null });
       try {
-        const summary = await import("../services/summary").then((module) =>
+        const response = await import("../services/summary").then((module) =>
           module.summaryService.getSummary(documentId)
         );
 
-        set({ summaryList: [...get().summaryList, summary], isLoading: false });
-        return summary;
+        set({
+          summaryList: [...get().summaryList, response],
+          isLoading: false,
+        });
+        return response;
       } catch (error) {
         const message =
           error instanceof Error
@@ -477,6 +495,8 @@ export const useSummaryStore = create<SummaryState>()(
         );
 
         set({ summaryList: response.data.data, isLoading: false });
+
+        // Transform the response to match AllSummaryResponse
         return {
           status: response.data.status || "success",
           error: false,
@@ -496,12 +516,15 @@ export const useSummaryStore = create<SummaryState>()(
     generateSummary: async (documentId: string) => {
       set({ isLoading: true, error: null });
       try {
-        const summary = await import("../services/summary").then((module) =>
+        const response = await import("../services/summary").then((module) =>
           module.summaryService.createSummary(documentId)
         );
 
-        set({ summaryList: [...get().summaryList, summary], isLoading: false });
-        return summary;
+        set({
+          summaryList: [...get().summaryList, response],
+          isLoading: false,
+        });
+        return response;
       } catch (error) {
         const message =
           error instanceof Error ? error.message : "Failed to generate summary";
