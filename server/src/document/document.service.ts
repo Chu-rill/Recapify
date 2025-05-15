@@ -106,4 +106,31 @@ export class DocumentService {
       };
     }
   }
+
+  async getAllDocuments(userId: string) {
+    try {
+      const documents =
+        await this.documentRepository.findDocumentsByUserId(userId);
+      if (!documents) {
+        return {
+          status: "error",
+          error: true,
+          statusCode: 404,
+          message: "No documents found",
+        };
+      }
+      return {
+        status: "success",
+        error: false,
+        statusCode: 200,
+        data: documents,
+      };
+    } catch (error) {
+      this.logger.error(
+        `Error fetching documents for user ${userId}: ${error.message}`,
+        error.stack
+      );
+      throw new BadRequestException("Failed to fetch documents");
+    }
+  }
 }

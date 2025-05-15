@@ -6,6 +6,7 @@ import {
   UploadedFile,
   UseGuards,
   Req,
+  Get,
 } from "@nestjs/common";
 import { FileInterceptor } from "@nestjs/platform-express";
 import { DocumentService } from "./document.service";
@@ -25,5 +26,11 @@ export class DocumentController {
   ) {
     const userId = req.user.id;
     return this.documentService.uploadDocument(file, userId);
+  }
+
+  @Get()
+  findAll(@Req() req: AuthRequest) {
+    const userId = req.user.id;
+    return this.documentService.getAllDocuments(userId);
   }
 }
