@@ -7,13 +7,15 @@ import {
 import { DocumentRepository } from "./document.repository";
 import { ProcessingStatus } from "@generated/prisma";
 import { CloudinaryService } from "src/infra/cloudinary/cloudinary.service";
+import { PrismaService } from "src/infra/db/prisma.service";
 
 @Injectable()
 export class DocumentService {
   private readonly logger = new Logger(DocumentService.name);
   constructor(
     private documentRepository: DocumentRepository,
-    private cloudinaryService: CloudinaryService
+    private cloudinaryService: CloudinaryService,
+    private readonly prisma: PrismaService
   ) {}
 
   async uploadDocument(file: Express.Multer.File, userId: string) {
@@ -139,11 +141,16 @@ export class DocumentService {
     }
   }
 
-  async deleteDocument(id: string, userId: string) {
+  async deleteDocument(userId: string, documentId: string) {
     try {
       // First check if the document exists and belongs to the user
-      const document =
-        await this.documentRepository.findFirstDocumentByUserId(userId);
+      const document = await this.prisma.document.findFirst({
+        where: {
+          id: documentId,
+          userId: userId,
+        },
+        select: { id: true },
+      });
 
       if (!document) {
         return {
@@ -153,12 +160,15 @@ export class DocumentService {
       }
 
       // If validation passes, delete the document
-      const result = await this.documentRepository.deleteDocument(id);
-      return result;
+      await this.prisma.document.delete({
+        where: { id: documentId },
+      });
+
+      return { success: true, message: "Document deleted successfully" };
     } catch (error) {
       // Log the error
       this.logger.error(
-        `Error deleting document ${id}: ${error.message}`,
+        `Error deleting document ${documentId}: ${error.message}`,
         error.stack
       );
       throw new InternalServerErrorException("Failed to delete document");

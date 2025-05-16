@@ -15,11 +15,11 @@ export default function UploadDocumentForm() {
     const file = acceptedFiles[0];
 
     // Check file size (max 10MB)
-    // const MAX_SIZE = 10 * 1024 * 1024; // 10MB
-    // if (file.size > MAX_SIZE) {
-    //   toast.error('File size exceeds 10MB limit');
-    //   return;
-    // }
+    const MAX_SIZE = 10 * 1024 * 1024; // 10MB
+    if (file.size > MAX_SIZE) {
+      toast.error("File size exceeds 10MB limit");
+      return;
+    }
 
     try {
       await uploadDocument(file);

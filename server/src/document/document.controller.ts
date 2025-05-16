@@ -8,6 +8,7 @@ import {
   Req,
   Get,
   Delete,
+  Param,
 } from "@nestjs/common";
 import { FileInterceptor } from "@nestjs/platform-express";
 import { DocumentService } from "./document.service";
@@ -36,9 +37,8 @@ export class DocumentController {
   }
 
   @Delete(":id")
-  deleteDocument(@Req() req: AuthRequest) {
+  deleteDocument(@Req() req: AuthRequest, @Param("id") id: string) {
     const userId = req.user.id;
-    const documentId = req.params.id;
-    return this.documentService.deleteDocument(userId, documentId);
+    return this.documentService.deleteDocument(userId, id);
   }
 }
