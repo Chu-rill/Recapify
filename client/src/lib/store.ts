@@ -219,11 +219,17 @@ export const useDocumentStore = create<DocumentState>()(
     fetchDocuments: async () => {
       set({ isLoading: true, error: null });
       try {
-        const { data: documents } = await import("../services/documents").then(
-          (module) => module.documentService.getAllDocuments()
+        const response = await import("../services/documents").then((module) =>
+          module.documentService.getAllDocuments()
         );
 
+        const documents = response.data.data;
         set({ documents, isLoading: false });
+        // console.log("Returned documents:", documents);
+        console.log(
+          "Returned documents (detailed):",
+          JSON.stringify(documents, null, 2)
+        );
         return documents;
       } catch (error) {
         const message =

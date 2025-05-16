@@ -18,11 +18,11 @@ export interface AuthResponse {
 // Document types
 export interface Document {
   id: string;
-  name: string;
+  fileName: string;
   fileType: string;
   userId: string;
-  createdAt: string;
-  status?: "pending" | "processing" | "completed" | "failed";
+  uploadedAt: string;
+  processingStatus?: "PENDING" | "PROCESSING" | "COMPLETED" | "FAILED";
 }
 
 export interface DocumentResponse {
