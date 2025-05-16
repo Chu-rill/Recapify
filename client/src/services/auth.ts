@@ -59,11 +59,13 @@ export const authService = {
 
   // Login with Google
   async loginWithGoogle(): Promise<void> {
-    window.location.href = `${api.defaults.baseURL}/oauth/google`; // Or your specific Google OAuth initiation endpoint
+    const redirectUrl = `${api.defaults.baseURL}/oauth/google`;
+    console.log("Redirecting to:", redirectUrl);
+    window.location.href = redirectUrl; // Or your specific Google OAuth initiation endpoint
   },
 
   async handleGoogleCallback(token: string): Promise<AuthResponse> {
-    const response = await api.post<AuthResponse>("/auth/google/callback", {
+    const response = await api.post<AuthResponse>("/oauth/google/callback", {
       token,
     }); // Adjust the endpoint as needed
     if (response.data.token) {

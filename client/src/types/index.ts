@@ -78,6 +78,7 @@ export interface Audio {
   fileSize: number;
   format: string;
   voiceType: string;
+  createdAt: string;
   documentId: string;
   summaryId: string;
   userId: string;

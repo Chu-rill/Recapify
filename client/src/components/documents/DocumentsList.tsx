@@ -90,7 +90,7 @@ export default function DocumentsList({ documents }: DocumentsListProps) {
     }
   };
 
-  if (documents.length === 0) {
+  if (!documents || documents.length === 0) {
     return (
       <div className="text-center py-8">
         <p className="text-muted-foreground">No documents found</p>
@@ -115,7 +115,7 @@ export default function DocumentsList({ documents }: DocumentsListProps) {
 
                 <div className="space-y-1">
                   <h3 className="font-medium text-sm line-clamp-1">
-                    {document.fileName}
+                    {document.fileName || "Unnamed Document"}
                   </h3>
                   <p className="text-xs text-muted-foreground">
                     {formatDate(document.uploadedAt)}

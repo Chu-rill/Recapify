@@ -5,7 +5,7 @@ import { toast } from "sonner";
 
 const GoogleOAuthCallback = () => {
   const navigate = useNavigate();
-  const { handleGoogleCallback, isLoading } = useAuthStore();
+  const { handleGoogleCallback, isLoading, user } = useAuthStore(); // Also destructure 'user' for a potential check
   const [searchParams] = useSearchParams();
 
   useEffect(() => {
@@ -15,9 +15,11 @@ const GoogleOAuthCallback = () => {
       const processGoogleAuth = async () => {
         try {
           await handleGoogleCallback(token);
+
           toast.success("Google login successful!");
           navigate("/dashboard"); // Redirect to your desired page after successful login
         } catch (error) {
+          console.error("Google authentication process failed:", error); // Log the error for debugging
           toast.error("Google authentication failed. Please try again.");
           navigate("/login"); // Redirect to login page on failure
         }
@@ -28,7 +30,7 @@ const GoogleOAuthCallback = () => {
       toast.error("Authentication token not found.");
       navigate("/login"); // Redirect to login if no token is present
     }
-  }, [handleGoogleCallback, navigate, searchParams]);
+  }, [handleGoogleCallback, navigate, searchParams]); // user is not a direct dependency for useEffect, but for logic inside
 
   return (
     <div className="flex min-h-screen items-center justify-center">

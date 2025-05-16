@@ -67,18 +67,22 @@ export const useAuthStore = create<AuthState>()(
         handleGoogleCallback: async (token: string) => {
           set({ isLoading: true, error: null });
           try {
-            const response = await authService.handleGoogleCallback(token);
+            localStorage.setItem("token", token);
+
             set({
-              user: response.data,
               isAuthenticated: true,
               isLoading: false,
             });
+
+            await useAuthStore.getState().fetchUser();
           } catch (error) {
             const message =
               error instanceof Error
                 ? error.message
                 : "Google authentication failed";
             set({ error: message, isLoading: false });
+            // Crucially, remove the token if there was an error in handling it
+            localStorage.removeItem("token");
             throw error;
           }
         },

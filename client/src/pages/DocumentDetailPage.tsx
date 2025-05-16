@@ -147,15 +147,17 @@ export default function DocumentDetailPage() {
                   <div>
                     <CardTitle className="flex items-center gap-2">
                       <FileText className="h-5 w-5" />
-                      {currentDoc?.name}
+                      {currentDoc?.fileName}
                     </CardTitle>
                     <CardDescription>
-                      {formatDate(currentDoc?.createdAt || "")}
+                      {formatDate(currentDoc?.uploadedAt || "")}
                     </CardDescription>
                   </div>
 
-                  {currentDoc?.status && (
-                    <Badge variant="outline">{currentDoc.status}</Badge>
+                  {currentDoc?.processingStatus && (
+                    <Badge variant="outline">
+                      {currentDoc.processingStatus}
+                    </Badge>
                   )}
                 </div>
               </CardHeader>
