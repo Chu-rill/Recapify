@@ -229,11 +229,7 @@ export const useDocumentStore = create<DocumentState>()(
 
         const documents = response.data.data;
         set({ documents, isLoading: false });
-        // console.log("Returned documents:", documents);
-        console.log(
-          "Returned documents (detailed):",
-          JSON.stringify(documents, null, 2)
-        );
+
         return documents;
       } catch (error) {
         const message =

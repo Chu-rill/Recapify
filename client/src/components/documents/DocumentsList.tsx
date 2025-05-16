@@ -42,7 +42,7 @@ export default function DocumentsList({ documents }: DocumentsListProps) {
 
   const getStatusBadge = (processingStatus?: string) => {
     // Log the actual status for debugging
-    console.log("Document status:", processingStatus);
+    // console.log("Document status:", processingStatus);
 
     // Normalize the status (handle case sensitivity and undefined)
     const status = processingStatus?.toUpperCase() || "";
