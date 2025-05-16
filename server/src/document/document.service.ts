@@ -1,4 +1,9 @@
-import { BadRequestException, Injectable, Logger } from "@nestjs/common";
+import {
+  BadRequestException,
+  Injectable,
+  InternalServerErrorException,
+  Logger,
+} from "@nestjs/common";
 import { DocumentRepository } from "./document.repository";
 import { ProcessingStatus } from "@generated/prisma";
 import { CloudinaryService } from "src/infra/cloudinary/cloudinary.service";
@@ -131,6 +136,32 @@ export class DocumentService {
         error.stack
       );
       throw new BadRequestException("Failed to fetch documents");
+    }
+  }
+
+  async deleteDocument(id: string, userId: string) {
+    try {
+      // First check if the document exists and belongs to the user
+      const document =
+        await this.documentRepository.findFirstDocumentByUserId(userId);
+
+      if (!document) {
+        return {
+          success: false,
+          message: "Document not found or unauthorized",
+        };
+      }
+
+      // If validation passes, delete the document
+      const result = await this.documentRepository.deleteDocument(id);
+      return result;
+    } catch (error) {
+      // Log the error
+      this.logger.error(
+        `Error deleting document ${id}: ${error.message}`,
+        error.stack
+      );
+      throw new InternalServerErrorException("Failed to delete document");
     }
   }
 }

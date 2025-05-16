@@ -7,6 +7,7 @@ import {
   UseGuards,
   Req,
   Get,
+  Delete,
 } from "@nestjs/common";
 import { FileInterceptor } from "@nestjs/platform-express";
 import { DocumentService } from "./document.service";
@@ -32,5 +33,12 @@ export class DocumentController {
   findAll(@Req() req: AuthRequest) {
     const userId = req.user.id;
     return this.documentService.getAllDocuments(userId);
+  }
+
+  @Delete(":id")
+  deleteDocument(@Req() req: AuthRequest) {
+    const userId = req.user.id;
+    const documentId = req.params.id;
+    return this.documentService.deleteDocument(userId, documentId);
   }
 }

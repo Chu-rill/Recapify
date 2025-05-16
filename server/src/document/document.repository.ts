@@ -45,9 +45,28 @@ export class DocumentRepository {
   }
 
   async deleteDocument(id: string) {
-    return this.prisma.document.delete({
-      where: { id },
-    });
+    try {
+      // Check if document exists first
+      const documentExists = await this.prisma.document.findUnique({
+        where: { id },
+        select: { id: true },
+      });
+
+      if (!documentExists) {
+        return { success: false, message: "Document not found" };
+      }
+
+      // If document exists, delete it
+      await this.prisma.document.delete({
+        where: { id },
+      });
+
+      return { success: true };
+    } catch (error) {
+      // Handle any other errors that might occur
+      console.error(`Error while deleting document ${id}:`, error);
+      throw error;
+    }
   }
 
   async getExtractedText(id: string): Promise<string> {
@@ -73,6 +92,11 @@ export class DocumentRepository {
 
   async findDocumentByUserId(userId: string) {
     return this.prisma.document.findMany({
+      where: { userId },
+    });
+  }
+  async findFirstDocumentByUserId(userId: string) {
+    return this.prisma.document.findFirst({
       where: { userId },
     });
   }
