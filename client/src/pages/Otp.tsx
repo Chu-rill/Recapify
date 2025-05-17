@@ -8,7 +8,7 @@ import {
 import { Button } from "../components/ui/button";
 import { Card, CardContent } from "../components/ui/card";
 import { toast } from "sonner";
-import { Link, useNavigate } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import { useAuthStore } from "../lib/store";
 
 const Otp = () => {
@@ -76,12 +76,12 @@ const Otp = () => {
           </Button>
         </CardContent>
         <div className="px-6 pb-6 pt-2 ">
-          <Link
+          {/* <Link
             to="/resend-otp"
             className="text-hotel-navy font-medium hover:underline"
           >
             Resend OTP
-          </Link>
+          </Link> */}
         </div>
       </Card>
     </div>

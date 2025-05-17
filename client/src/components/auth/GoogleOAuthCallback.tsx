@@ -5,7 +5,7 @@ import { toast } from "sonner";
 
 const GoogleOAuthCallback = () => {
   const navigate = useNavigate();
-  const { handleGoogleCallback, isLoading, user } = useAuthStore(); // Also destructure 'user' for a potential check
+  const { handleGoogleCallback, isLoading } = useAuthStore(); // Also destructure 'user' for a potential check
   const [searchParams] = useSearchParams();
 
   useEffect(() => {

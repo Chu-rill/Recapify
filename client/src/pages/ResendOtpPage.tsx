@@ -1,16 +1,16 @@
-import React, { useState } from "react";
+import { useState } from "react";
 import { Card, CardContent } from "../components/ui/card";
 import { Input } from "../components/ui/input";
 import { Button } from "../components/ui/button";
-import { toast } from "sonner";
-import { authService } from "../services/auth";
-import { Link, useNavigate } from "react-router-dom";
+// import { toast } from "sonner";
+// import { authService } from "../services/auth";
+import { Link } from "react-router-dom";
 
 const ResendOtpPage = () => {
   const [email, setEmail] = useState("");
-  const [loading, setLoading] = useState(false);
-  const [disabled, setDisabled] = useState(false);
-  const navigate = useNavigate();
+  const [loading] = useState(false);
+  const [disabled] = useState(false);
+  // const navigate = useNavigate();
 
   // const handleResend = async () => {
   //   if (!email || !email.includes("@")) {

@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
+// import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import { useDocumentStore, useAudioStore } from "@/lib/store";
 import {
@@ -13,20 +13,20 @@ import {
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Alert, AlertDescription } from "@/components/ui/alert";
+// import { Alert, AlertDescription } from "@/components/ui/alert";
 import UploadDocumentForm from "@/components/documents/UploadDocumentForm";
 import DocumentsList from "@/components/documents/DocumentsList";
 import AudioList from "@/components/audio/AudioList";
-import { AlertCircle, Loader2 } from "lucide-react";
+import { Loader2 } from "lucide-react";
 
 export default function DashboardPage() {
-  const navigate = useNavigate();
+  // const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState("documents");
 
   const {
     documents,
     isLoading: isDocumentLoading,
-    error: documentError,
+    // error: documentError,
     uploadProgress,
     fetchDocuments,
   } = useDocumentStore();
@@ -34,7 +34,7 @@ export default function DashboardPage() {
   const {
     audioList,
     isLoading: isAudioLoading,
-    error: audioError,
+    // error: audioError,
     fetchAudioList,
   } = useAudioStore();
 
@@ -52,7 +52,7 @@ export default function DashboardPage() {
   }, [fetchDocuments, fetchAudioList]);
 
   const isLoading = isDocumentLoading || isAudioLoading;
-  const hasError = documentError || audioError;
+  // const hasError = documentError || audioError;
 
   // Function to handle view all documents click
   const handleViewAllDocuments = () => {
