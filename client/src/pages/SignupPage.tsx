@@ -71,7 +71,7 @@ export default function SignupPage() {
     setIsGoogleLoading(true);
     try {
       await loginWithGoogle();
-      // toast.success("Account created successfully with Google!");
+      toast.success("Account created successfully with Google!");
       navigate("/dashboard");
     } catch (error) {
       toast.error("Google signup failed. Please try again.");
