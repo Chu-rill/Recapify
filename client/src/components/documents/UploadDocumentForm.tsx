@@ -5,7 +5,13 @@ import { Button } from "@/components/ui/button";
 import { useDocumentStore } from "@/lib/store";
 import { Upload, FileX } from "lucide-react";
 
-export default function UploadDocumentForm() {
+interface UploadDocumentFormProps {
+  onUploadSuccess?: () => void; // Add this prop
+}
+
+export default function UploadDocumentForm({
+  onUploadSuccess,
+}: UploadDocumentFormProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { uploadDocument, isLoading } = useDocumentStore();
 
@@ -14,17 +20,23 @@ export default function UploadDocumentForm() {
 
     const file = acceptedFiles[0];
 
-    // Check file size (max 10MB)
-    const MAX_SIZE = 10 * 1024 * 1024; // 10MB
+    // Check file size (max 4MB)
+    const MAX_SIZE = 4 * 1024 * 1024; // 10MB
     if (file.size > MAX_SIZE) {
       toast.error("File size exceeds 10MB limit");
       return;
     }
 
     try {
+      console.log("Uploading file:", file);
       await uploadDocument(file);
+
+      // Call the callback if provided
+      onUploadSuccess?.();
+
       toast.success("Document uploaded successfully!");
     } catch (error) {
+      console.error("Upload error:", error);
       toast.error("Failed to upload document");
     }
   };
@@ -34,10 +46,10 @@ export default function UploadDocumentForm() {
       onDrop,
       accept: {
         "application/pdf": [".pdf"],
-        "application/msword": [".doc"],
-        "application/vnd.openxmlformats-officedocument.wordprocessingml.document":
-          [".docx"],
-        "text/plain": [".txt"],
+        // "application/msword": [".doc"],
+        // "application/vnd.openxmlformats-officedocument.wordprocessingml.document":
+        //   [".docx"],
+        // "text/plain": [".txt"],
       },
       maxFiles: 1,
       disabled: isLoading,
@@ -79,7 +91,8 @@ export default function UploadDocumentForm() {
             <Upload className="h-10 w-10 text-muted-foreground mb-2" />
             <p className="text-sm font-medium mb-1">Drag and drop a file</p>
             <p className="text-xs text-muted-foreground mb-2">
-              PDF, Word, or Text document (max 10MB)
+              {/*  PDF, Word, or Text document (max 10MB)*/}
+              PDF(max 4MB)
             </p>
             <Button
               type="button"
