@@ -58,7 +58,7 @@ export default function LoginPage() {
     setIsGoogleLoading(true);
     try {
       await loginWithGoogle();
-      toast.success("Google login successful!");
+      // toast.success("Google login successful!");
       navigate("/dashboard");
     } catch (error) {
       toast.error("Google login failed. Please try again.");

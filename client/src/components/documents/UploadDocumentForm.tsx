@@ -20,8 +20,8 @@ export default function UploadDocumentForm({
 
     const file = acceptedFiles[0];
 
-    // Check file size (max 4MB)
-    const MAX_SIZE = 4 * 1024 * 1024; // 10MB
+    // Check file size (max 10MB)
+    const MAX_SIZE = 10 * 1024 * 1024; // 10MB
     if (file.size > MAX_SIZE) {
       toast.error("File size exceeds 10MB limit");
       return;
@@ -92,7 +92,7 @@ export default function UploadDocumentForm({
             <p className="text-sm font-medium mb-1">Drag and drop a file</p>
             <p className="text-xs text-muted-foreground mb-2">
               {/*  PDF, Word, or Text document (max 10MB)*/}
-              PDF(max 4MB)
+              PDF(max 10MB)
             </p>
             <Button
               type="button"

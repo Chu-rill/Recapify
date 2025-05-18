@@ -16,7 +16,7 @@ const GoogleOAuthCallback = () => {
         try {
           await handleGoogleCallback(token);
 
-          toast.success("Google login successful!");
+          toast.success("Successful!");
           navigate("/dashboard"); // Redirect to your desired page after successful login
         } catch (error) {
           console.error("Google authentication process failed:", error); // Log the error for debugging

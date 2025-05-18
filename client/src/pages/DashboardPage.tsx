@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react"; // Add useCallback
 // import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import { useDocumentStore, useAudioStore } from "@/lib/store";
@@ -38,18 +38,25 @@ export default function DashboardPage() {
     fetchAudioList,
   } = useAudioStore();
 
-  useEffect(() => {
-    const loadDashboardData = async () => {
-      try {
-        await fetchDocuments();
-        await fetchAudioList();
-      } catch (error) {
-        toast.error("Failed to load dashboard data");
-      }
-    };
+  // Use useCallback to memoize the fetchDashboardData function
+  // to prevent unnecessary re-renders of components that depend on it
+  const fetchDashboardData = useCallback(async () => {
+    try {
+      await fetchDocuments();
+      await fetchAudioList();
+    } catch (error) {
+      toast.error("Failed to load dashboard data");
+    }
+  }, [fetchDocuments, fetchAudioList]); // Dependencies of useCallback
 
-    loadDashboardData();
-  }, [fetchDocuments, fetchAudioList]);
+  useEffect(() => {
+    fetchDashboardData();
+  }, [fetchDashboardData]); // Dependency array for useEffect
+
+  // Function to handle successful document upload
+  const handleUploadSuccess = () => {
+    fetchDocuments(); // Re-fetch documents after a successful upload
+  };
 
   const isLoading = isDocumentLoading || isAudioLoading;
   // const hasError = documentError || audioError;
@@ -94,7 +101,8 @@ export default function DashboardPage() {
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <UploadDocumentForm />
+              {/* Pass the callback here */}
+              <UploadDocumentForm onUploadSuccess={handleUploadSuccess} />
 
               {uploadProgress > 0 && uploadProgress < 100 && (
                 <div className="mt-4 space-y-2">
