@@ -18,10 +18,13 @@ async function bootstrap() {
   app.use(bodyParser.json({ limit: "50mb" }));
   app.use(bodyParser.urlencoded({ limit: "50mb", extended: true }));
   app.enableCors({
-    origin: "*", // Your frontend URL, default to *
-    methods: "*",
-    allowedHeaders: "Content-Type,Authorization",
-    credentials: false,
+    origin: [
+      "https://recapify-psi.vercel.app",
+      "http://localhost:5173", // for development
+    ], // Your frontend URL, default to *
+    methods: ["GET", "PUT", "POST", "DELETE", "OPTIONS", "PATCH"],
+    allowedHeaders: ["Content-Type", "Authorization"],
+    credentials: true,
   });
   await app.listen(process.env.PORT ?? 3000);
 }

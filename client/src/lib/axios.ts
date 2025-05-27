@@ -7,6 +7,7 @@ const api = axios.create({
   headers: {
     "Content-Type": "application/json",
   },
+  withCredentials: true,
 });
 
 // Add a request interceptor to include JWT in all requests
@@ -16,6 +17,10 @@ api.interceptors.request.use(
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
     }
+    // Add CORS headers
+    config.headers["Access-Control-Allow-Origin"] = "*";
+    config.headers["Access-Control-Allow-Methods"] =
+      "GET,PUT,POST,DELETE,PATCH,OPTIONS";
     return config;
   },
   (error) => {
@@ -33,6 +38,16 @@ api.interceptors.response.use(
     if (response && response.status === 401) {
       localStorage.removeItem("token");
       window.location.href = "/login";
+    }
+
+    // Log errors in production
+    if (process.env.NODE_ENV === "production") {
+      console.error("API Error:", {
+        status: response?.status,
+        url: response?.config?.url,
+        method: response?.config?.method,
+        error: error.message,
+      });
     }
 
     return Promise.reject(error);
