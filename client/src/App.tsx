@@ -1,96 +1,35 @@
-import { useEffect } from "react";
-import {
-  BrowserRouter as Router,
-  Routes,
-  Route,
-  Navigate,
-} from "react-router-dom";
-import { Toaster } from "@/components/ui/sonner";
-import { ThemeProvider } from "@/components/theme-provider";
-import { useAuthStore } from "@/lib/store";
-
-// Layout components
-import Layout from "@/components/layout/Layout";
-import ProtectedRoute from "@/components/auth/ProtectedRoute";
-
-// Pages
-import HomePage from "@/pages/HomePage";
-import LoginPage from "@/pages/LoginPage";
-import SignupPage from "@/pages/SignupPage";
-import DashboardPage from "@/pages/DashboardPage";
-import DocumentDetailPage from "@/pages/DocumentDetailPage";
-import ProfilePage from "@/pages/ProfilePage";
-import NotFoundPage from "@/pages/NotFoundPage";
-import GoogleOAuthCallback from "./components/auth/GoogleOAuthCallback";
-import Otp from "./pages/Otp";
-import ResendOtpPage from "./pages/ResendOtpPage";
+import { useState } from 'react'
+import reactLogo from './assets/react.svg'
+import viteLogo from '/vite.svg'
+import './App.css'
 
 function App() {
-  const { isAuthenticated, fetchUser } = useAuthStore();
-
-  useEffect(() => {
-    if (isAuthenticated) {
-      fetchUser();
-    }
-  }, [isAuthenticated, fetchUser]);
+  const [count, setCount] = useState(0)
 
   return (
-    <ThemeProvider defaultTheme="dark" storageKey="recapify-theme">
-      <Router>
-        <Routes>
-          <Route path="/" element={<Layout />}>
-            {/* Public routes */}
-            <Route index element={<HomePage />} />
-            <Route
-              path="login"
-              element={
-                isAuthenticated ? <Navigate to="/dashboard" /> : <LoginPage />
-              }
-            />
-            <Route
-              path="signup"
-              element={
-                isAuthenticated ? <Navigate to="/dashboard" /> : <SignupPage />
-              }
-            />
-            <Route path="/oauth-redirect" element={<GoogleOAuthCallback />} />
-            <Route path="/otp" element={<Otp />} />
-            <Route path="/resend-otp" element={<ResendOtpPage />} />
-
-            {/* Protected routes */}
-            <Route
-              path="dashboard"
-              element={
-                <ProtectedRoute>
-                  <DashboardPage />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="documents/:documentId"
-              element={
-                <ProtectedRoute>
-                  <DocumentDetailPage />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="profile"
-              element={
-                <ProtectedRoute>
-                  <ProfilePage />
-                </ProtectedRoute>
-              }
-            />
-
-            {/* 404 route */}
-            <Route path="*" element={<NotFoundPage />} />
-          </Route>
-        </Routes>
-        <Toaster position="top-right" />
-      </Router>
-    </ThemeProvider>
-  );
+    <>
+      <div>
+        <a href="https://vite.dev" target="_blank">
+          <img src={viteLogo} className="logo" alt="Vite logo" />
+        </a>
+        <a href="https://react.dev" target="_blank">
+          <img src={reactLogo} className="logo react" alt="React logo" />
+        </a>
+      </div>
+      <h1>Vite + React</h1>
+      <div className="card">
+        <button onClick={() => setCount((count) => count + 1)}>
+          count is {count}
+        </button>
+        <p>
+          Edit <code>src/App.tsx</code> and save to test HMR
+        </p>
+      </div>
+      <p className="read-the-docs">
+        Click on the Vite and React logos to learn more
+      </p>
+    </>
+  )
 }
 
-export default App;
+export default App

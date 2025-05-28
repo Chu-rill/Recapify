@@ -1,5 +1,7 @@
-import { Link } from 'react-router-dom';
-import { FileText } from 'lucide-react';
+import { Link } from "react-router-dom";
+import { FileText } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Separator } from "@/components/ui/separator";
 
 export default function Footer() {
   return (
@@ -10,25 +12,21 @@ export default function Footer() {
             <FileText className="h-5 w-5 text-primary" />
             <span className="font-semibold">Recapify</span>
           </Link>
-          
+
+          <Separator orientation="vertical" className="hidden h-4 md:block" />
+
           <p className="text-xs text-muted-foreground md:text-sm">
             © {new Date().getFullYear()} Recapify. All rights reserved.
           </p>
         </div>
-        
-        <nav className="flex gap-4 sm:gap-6">
-          <Link
-            to="/privacy"
-            className="text-xs text-muted-foreground transition-colors hover:text-primary md:text-sm"
-          >
-            Privacy
-          </Link>
-          <Link
-            to="/terms"
-            className="text-xs text-muted-foreground transition-colors hover:text-primary md:text-sm"
-          >
-            Terms
-          </Link>
+
+        <nav className="flex items-center gap-2">
+          <Button variant="ghost" size="sm" asChild>
+            <Link to="/privacy">Privacy</Link>
+          </Button>
+          <Button variant="ghost" size="sm" asChild>
+            <Link to="/terms">Terms</Link>
+          </Button>
         </nav>
       </div>
     </footer>
