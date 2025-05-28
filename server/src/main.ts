@@ -19,7 +19,7 @@ async function bootstrap() {
   app.use(bodyParser.urlencoded({ limit: "50mb", extended: true }));
   app.enableCors({
     origin: [
-      "https://recapify-psi.vercel.app",
+      "https://recapify-avoq.vercel.app",
       "http://localhost:5173", // for development
     ], // Your frontend URL, default to *
     methods: ["GET", "PUT", "POST", "DELETE", "OPTIONS", "PATCH"],
