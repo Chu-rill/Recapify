@@ -1,5 +1,9 @@
 import api from "../lib/axios";
-import { DocumentResponse, DocumentsResponse, SummaryResponse } from "../types";
+import type {
+  DocumentResponse,
+  DocumentsResponse,
+  SummaryResponse,
+} from "../types";
 
 export const documentService = {
   // Upload a document

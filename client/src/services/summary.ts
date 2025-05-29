@@ -1,5 +1,5 @@
 import api from "../lib/axios";
-import { AllSummaryResponse, SummaryResponse } from "../types";
+import type { AllSummaryResponse, SummaryResponse } from "../types";
 
 const BASE_URL = "/summary"; // Assuming your NestJS controller route is '/summary'
 

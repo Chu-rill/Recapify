@@ -1,6 +1,12 @@
 import { create } from "zustand";
 import { devtools, persist } from "zustand/middleware";
-import { User, Document, Summary, Audio, AllSummaryResponse } from "../types";
+import type {
+  User,
+  Document,
+  Summary,
+  Audio,
+  AllSummaryResponse,
+} from "../types";
 import { authService } from "../services/auth";
 
 interface AuthState {
