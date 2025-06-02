@@ -1,5 +1,5 @@
 import api from "../lib/axios";
-import type { AudioResponse, AudiosResponse } from "../types";
+import { AudioResponse, AudiosResponse } from "../types";
 
 export const audioService = {
   // Generate audio from a summary

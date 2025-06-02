@@ -1,5 +1,5 @@
 import api from "../lib/axios";
-import type { AuthResponse } from "../types";
+import { AuthResponse } from "../types";
 
 export const authService = {
   // Register a new user

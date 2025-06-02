@@ -5,7 +5,7 @@ import {
   Route,
   Navigate,
 } from "react-router-dom";
-import { Toaster } from "@/hooks/use-toast";
+import { Toaster } from "@/components/ui/sonner";
 import { ThemeProvider } from "@/components/theme-provider";
 import { useAuthStore } from "@/lib/store";
 
@@ -35,12 +35,7 @@ function App() {
   }, [isAuthenticated, fetchUser]);
 
   return (
-    <ThemeProvider
-      attribute="class"
-      defaultTheme="system"
-      enableSystem
-      disableTransitionOnChange
-    >
+    <ThemeProvider defaultTheme="dark" storageKey="recapify-theme">
       <Router>
         <Routes>
           <Route path="/" element={<Layout />}>
@@ -92,12 +87,7 @@ function App() {
             <Route path="*" element={<NotFoundPage />} />
           </Route>
         </Routes>
-        <Toaster
-          position="top-right"
-          toastOptions={{
-            duration: 4000,
-          }}
-        />
+        <Toaster position="top-right" />
       </Router>
     </ThemeProvider>
   );

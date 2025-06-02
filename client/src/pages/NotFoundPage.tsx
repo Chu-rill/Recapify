@@ -1,12 +1,12 @@
-import { useNavigate } from "react-router-dom";
-import { Button } from "@/components/ui/button";
-import { useAuthStore } from "@/lib/store";
-import { Home, ArrowLeft } from "lucide-react";
+import { useNavigate } from 'react-router-dom';
+import { Button } from '@/components/ui/button';
+import { useAuthStore } from '@/lib/store';
+import { Home, ArrowLeft } from 'lucide-react';
 
 export default function NotFoundPage() {
   const navigate = useNavigate();
   const { isAuthenticated } = useAuthStore();
-
+  
   return (
     <div className="container flex items-center justify-center min-h-[calc(100vh-12rem)]">
       <div className="max-w-md w-full mx-auto px-4 py-10 space-y-6 text-center">
@@ -15,19 +15,19 @@ export default function NotFoundPage() {
         <p className="text-muted-foreground">
           Sorry, the page you are looking for doesn't exist or has been moved.
         </p>
-
+        
         <div className="flex flex-col sm:flex-row gap-4 justify-center">
-          <Button
-            variant="default"
+          <Button 
+            variant="default" 
             className="gap-2"
-            onClick={() => navigate(isAuthenticated ? "/dashboard" : "/")}
+            onClick={() => navigate(isAuthenticated ? '/dashboard' : '/')}
           >
             <Home className="h-4 w-4" />
-            {isAuthenticated ? "Back to Dashboard" : "Back to Home"}
+            {isAuthenticated ? 'Back to Dashboard' : 'Back to Home'}
           </Button>
-
-          <Button
-            variant="outline"
+          
+          <Button 
+            variant="outline" 
             className="gap-2"
             onClick={() => navigate(-1)}
           >
