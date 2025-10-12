@@ -26,6 +26,8 @@ async function bootstrap() {
     allowedHeaders: ["Content-Type", "Authorization"],
     credentials: true,
   });
-  await app.listen(process.env.PORT ?? 3000);
+  let port = process.env.PORT ?? 3000;
+  await app.listen(port);
+  console.log(`📍 Server: http://localhost:${port}`);
 }
 bootstrap();

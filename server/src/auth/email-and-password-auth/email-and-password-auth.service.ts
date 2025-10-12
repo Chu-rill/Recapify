@@ -110,21 +110,35 @@ export class AuthService {
           data: null,
         };
       }
-      let { password: userPassword, ...userWithoutPassword } = user;
+
+      // Check if user is verified
+      if (!user.isVerified) {
+        return {
+          statusCode: HttpStatus.FORBIDDEN,
+          message:
+            "Please verify your email before logging in. Check your inbox for the OTP.",
+          data: null,
+        };
+      }
+
+      // Create JWT payload with only necessary fields (match OAuth format)
       const payload = {
-        ...userWithoutPassword, // Spread the rest of the user properties
+        id: user.id,
+        username: user.username,
+        role: user.role,
       };
-      // const payload = {
-      //   sub: user.id,
-      //   username: user.firstName,
-      // };
+
       const token = await this.jwt.signAsync(payload);
       return {
         statusCode: HttpStatus.OK,
         message: "login successful",
         data: {
           id: user.id,
-          userName: user.username,
+          username: user.username,
+          email: user.email,
+          phone: user.phone,
+          role: user.role,
+          isVerified: user.isVerified,
         },
         token: token,
       };
@@ -146,10 +160,11 @@ export class AuthService {
     // Mark user as verified
     await this.userRespository.verifyUser(dto.email);
 
-    // Create a token and return user data similar to login method
-    let { password: userPassword, ...userWithoutPassword } = user;
+    // Create JWT payload with only necessary fields (match OAuth and login format)
     const payload = {
-      ...userWithoutPassword, // Spread the rest of the user properties
+      id: user.id,
+      username: user.username,
+      role: user.role,
     };
 
     const token = await this.jwt.signAsync(payload);
@@ -159,7 +174,11 @@ export class AuthService {
       message: "User verified successfully",
       data: {
         id: user.id,
-        userName: user.username,
+        username: user.username,
+        email: user.email,
+        phone: user.phone,
+        role: user.role,
+        isVerified: true,
       },
       token: token,
     };
