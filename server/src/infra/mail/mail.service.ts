@@ -1,28 +1,25 @@
 import { Injectable } from "@nestjs/common";
-import * as nodemailer from "nodemailer";
+import { Resend } from "resend";
 import * as fs from "fs/promises";
 import * as handlebars from "handlebars";
 import * as path from "path";
 import { ConfigService } from "@nestjs/config";
-import { last } from "rxjs";
 
 @Injectable()
 export class MailService {
-  private transporter: nodemailer.Transporter;
+  private resend: Resend;
   private welcomeTemplatePath: string;
   private welcomeOauthTemplatePath: string;
+  private fromEmail: string;
 
   constructor(private readonly configService: ConfigService) {
-    this.transporter = nodemailer.createTransport({
-      host: configService.get<string>("EMAIL_PROVIDER"),
-      port: Number(configService.get<string>("SERVICE_PORT")),
-      secure: false,
-      service: "gmail",
-      auth: {
-        user: configService.get<string>("EMAIL_USER"),
-        pass: configService.get<string>("EMAIL_PASS"),
-      },
-    });
+    const resendApiKey = configService.get<string>("RESEND_API_KEY");
+    if (!resendApiKey) {
+      throw new Error("RESEND_API_KEY is not configured");
+    }
+
+    this.resend = new Resend(resendApiKey);
+    this.fromEmail = configService.get<string>("FROM_EMAIL") || "onboarding@resend.dev";
 
     this.welcomeTemplatePath = path.join(
       process.cwd(),
@@ -50,18 +47,23 @@ export class MailService {
     text?: string
   ): Promise<void> {
     try {
-      const info = await this.transporter.sendMail({
-        from: this.configService.get<string>("EMAIL_USER"),
+      const { data, error } = await this.resend.emails.send({
+        from: this.fromEmail,
         to: email,
         subject,
         text: text || "",
       });
 
-      console.log(`Message sent: ${info.response}`);
+      if (error) {
+        throw new Error(`Failed to send email: ${error.message}`);
+      }
+
+      console.log(`Message sent successfully. ID: ${data?.id}`);
     } catch (error) {
       console.error(
         `Error sending email: ${error instanceof Error ? error.message : "Unknown error"}`
       );
+      throw error;
     }
   }
 
@@ -76,23 +78,30 @@ export class MailService {
       );
       const emailTemplate = handlebars.compile(templateSource);
 
-      const info = await this.transporter.sendMail({
-        from: this.configService.get<string>("EMAIL_USER"),
-        to: email,
-        subject: data.subject,
-        html: emailTemplate({
-          PlatformName: "Recapify",
-          Username: data.username,
-          title: "Welcome Email",
-          OTP: data.OTP,
-        }),
+      const htmlContent = emailTemplate({
+        PlatformName: "Recapify",
+        Username: data.username,
+        title: "Welcome to Recapify",
+        OTP: data.OTP,
       });
 
-      console.log(`Message sent: ${info.response}`);
+      const { data: result, error } = await this.resend.emails.send({
+        from: this.fromEmail,
+        to: email,
+        subject: data.subject,
+        html: htmlContent,
+      });
+
+      if (error) {
+        throw new Error(`Failed to send welcome email: ${error.message}`);
+      }
+
+      console.log(`Welcome email sent successfully. ID: ${result?.id}`);
     } catch (error) {
       console.error(
-        `Error sending email with template: ${error instanceof Error ? error.message : "Unknown error"}`
+        `Error sending welcome email: ${error instanceof Error ? error.message : "Unknown error"}`
       );
+      throw error;
     }
   }
 
@@ -107,22 +116,29 @@ export class MailService {
       );
       const emailTemplate = handlebars.compile(templateSource);
 
-      const info = await this.transporter.sendMail({
-        from: this.configService.get<string>("EMAIL_USER"),
-        to: email,
-        subject: data.subject,
-        html: emailTemplate({
-          PlatformName: "InnkeeperPro",
-          Username: data.username,
-          title: "Welcome Email",
-        }),
+      const htmlContent = emailTemplate({
+        PlatformName: "Recapify",
+        Username: data.username,
+        title: "Welcome to Recapify",
       });
 
-      console.log(`Message sent: ${info.response}`);
+      const { data: result, error } = await this.resend.emails.send({
+        from: this.fromEmail,
+        to: email,
+        subject: data.subject,
+        html: htmlContent,
+      });
+
+      if (error) {
+        throw new Error(`Failed to send OAuth welcome email: ${error.message}`);
+      }
+
+      console.log(`OAuth welcome email sent successfully. ID: ${result?.id}`);
     } catch (error) {
       console.error(
-        `Error sending email with template: ${error instanceof Error ? error.message : "Unknown error"}`
+        `Error sending OAuth welcome email: ${error instanceof Error ? error.message : "Unknown error"}`
       );
+      throw error;
     }
   }
 }

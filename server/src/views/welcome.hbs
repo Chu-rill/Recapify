@@ -1,125 +1,210 @@
 <html
-  xmlns='http://www.w3.org/1999/xhtml'
-  xmlns:v='urn:schemas-microsoft-com:vml'
-  xmlns:o='urn:schemas-microsoft-com:office:office'
+  xmlns="http://www.w3.org/1999/xhtml"
+  xmlns:v="urn:schemas-microsoft-com:vml"
+  xmlns:o="urn:schemas-microsoft-com:office:office"
 >
-
   <head>
     <title>{{title}}</title>
-    <!--[if !mso]><!-- -->
-    <meta http-equiv='X-UA-Compatible' content='IE=edge' />
-    <!--<![endif]-->
-    <meta http-equiv='Content-Type' content='text/html; charset=UTF-8' />
-    <meta name='viewport' content='width=device-width, initial-scale=1' />
-    <style type='text/css'>
-      body { margin: 0; padding: 0; -webkit-text-size-adjust: 100%;
-      -ms-text-size-adjust: 100%; background-color: #f9f9f9; font-family: Arial,
-      sans-serif; } table, td { border-collapse: collapse; mso-table-lspace:
-      0pt; mso-table-rspace: 0pt; } img { border: 0; height: auto; line-height:
-      100%; outline: none; text-decoration: none; } p { display: block; margin:
-      13px 0; }
-    </style>
     <!--[if !mso]><!-->
-    <style type='text/css'>
-      @media only screen and (max-width:480px) { @-ms-viewport { width: 320px; }
-      @viewport { width: 320px; } }
-    </style>
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
     <!--<![endif]-->
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <style type="text/css">
+      body {
+        margin: 0;
+        padding: 0;
+        -webkit-text-size-adjust: 100%;
+        -ms-text-size-adjust: 100%;
+        background-color: #f4f7fa;
+        font-family:
+          -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+          "Helvetica Neue", Arial, sans-serif;
+      }
+      table,
+      td {
+        border-collapse: collapse;
+        mso-table-lspace: 0pt;
+        mso-table-rspace: 0pt;
+      }
+      img {
+        border: 0;
+        height: auto;
+        line-height: 100%;
+        outline: none;
+        text-decoration: none;
+        display: block;
+      }
+      p {
+        display: block;
+        margin: 0 0 16px 0;
+      }
+      .otp-box {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        border-radius: 12px;
+        padding: 24px;
+        margin: 32px auto;
+        max-width: 280px;
+      }
+      .otp-code {
+        font-size: 36px;
+        font-weight: 700;
+        color: #ffffff;
+        letter-spacing: 8px;
+        text-align: center;
+        margin: 0;
+        font-family: "Courier New", monospace;
+      }
+      .otp-label {
+        font-size: 12px;
+        color: rgba(255, 255, 255, 0.8);
+        text-transform: uppercase;
+        letter-spacing: 1px;
+        text-align: center;
+        margin-bottom: 12px;
+      }
+      @media only screen and (max-width: 480px) {
+        .content-wrapper {
+          padding: 20px 16px !important;
+        }
+        .otp-code {
+          font-size: 28px !important;
+          letter-spacing: 6px !important;
+        }
+      }
+    </style>
   </head>
 
   <body>
+    <table
+      border="0"
+      cellpadding="0"
+      cellspacing="0"
+      width="100%"
+      style="background-color: #f4f7fa; min-height: 100vh;"
+    >
+      <tr>
+        <td align="center" style="padding: 40px 20px;">
+          <!-- Main container -->
+          <table
+            border="0"
+            cellpadding="0"
+            cellspacing="0"
+            width="600"
+            style="background: #ffffff; border-radius: 16px; box-shadow: 0 4px 24px rgba(0, 0, 0, 0.08); overflow: hidden;"
+          >
 
-    <div style='background-color:#f9f9f9;'>
-      <div style='background:#fff;Margin:0px auto;max-width:600px;'>
-        <table
-          align='center'
-          border='0'
-          cellpadding='0'
-          cellspacing='0'
-          role='presentation'
-          style='background:#fff;width:100%;'
-        >
-          <tbody>
+            <!-- Content -->
             <tr>
-              <td style='padding:20px;text-align:center;'>
-                <img
-                  src='https://i.imgur.com/KO1vcE9.png'
-                  alt='[Platform Name] Logo'
-                  style='width: 100px; margin-bottom: 20px;'
-                />
-
-                <h2
-                  style='font-family: Arial, sans-serif; font-size: 24px; color: #333;'
+              <td class="content-wrapper" style="padding: 0 40px 40px 40px;">
+                <h1
+                  style="font-size: 28px; font-weight: 600; color: #1a1a1a; text-align: center; margin: 0 0 16px 0;"
                 >
                   Welcome to
-                  {{PlatformName}},
-                  {{Username}}!
-                </h2>
-                <p style='font-size: 16px; color: #555;'>Hi {{Username}},</p>
-                <p style='font-size: 16px; color: #555;'>
-                  We're excited to have you on board! Get ready to explore all
-                  the amazing features
-                  {{PlatformName}}
-                  has to offer.
-                </p>
-                <p style='font-size: 16px; color: #555;'>
-                  Your OTP for account verification is:
+                  {{PlatformName}}!
+                </h1>
 
-                </p>
-
-                <div
-                  style='display: flex; justify-content: center; align-items: center; width: 100%; font-size: larger;'
+                <p
+                  style="font-size: 18px; color: #4a5568; text-align: center; margin: 0 0 32px 0;"
                 >
-                  <p> <strong>{{OTP}}</strong></p>
-                </div>
-                <p style='font-size: 16px; color: #555;'>
-                  Please enter this code in the verification section to complete
-                  your signup process.
+                  Hi
+                  <strong>{{Username}}</strong>,
                 </p>
 
+                <p
+                  style="font-size: 16px; color: #4a5568; text-align: center; line-height: 1.6; margin: 0 0 32px 0;"
+                >
+                  We're excited to have you on board! To complete your
+                  registration, please verify your account using the OTP code
+                  below.
+                </p>
+
+                <!-- OTP Box -->
+                <table border="0" cellpadding="0" cellspacing="0" width="100%">
+                  <tr>
+                    <td align="center">
+                      <table
+                        class="otp-box"
+                        border="0"
+                        cellpadding="0"
+                        cellspacing="0"
+                      >
+                        <tr>
+                          <td>
+                            <p
+                              class="otp-label"
+                              style="margin: 0 0 12px 0;"
+                            >Verification Code</p>
+                            <p class="otp-code">{{OTP}}</p>
+                          </td>
+                        </tr>
+                      </table>
+                    </td>
+                  </tr>
+                </table>
+
+                <p
+                  style="font-size: 14px; color: #718096; text-align: center; line-height: 1.6; margin: 24px 0 0 0;"
+                >
+                  This code will expire in 10 minutes. Please enter it in the
+                  verification section to complete your signup process.
+                </p>
               </td>
             </tr>
+
+            <!-- Divider -->
             <tr>
-              <td style='text-align:center; padding:40px 20px;'>
-                <p style='font-size: 14px; color: #888;'>If you have any
-                  questions, feel free to
+              <td style="padding: 0 40px;">
+                <div style="border-top: 1px solid #e2e8f0;"></div>
+              </td>
+            </tr>
+
+            <!-- Footer -->
+            <tr>
+              <td style="padding: 32px 40px; text-align: center;">
+                <p style="font-size: 14px; color: #718096; margin: 0 0 8px 0;">
+                  Need help?
                   <a
-                    href='mailto:support@example.com'
-                    style='color:#2F67F6;'
-                  >contact us</a>. We're here to help!
+                    href="mailto:support@recapify.com"
+                    style="color: #667eea; text-decoration: none; font-weight: 500;"
+                  >
+                    Contact our support team
+                  </a>
+                </p>
+                <p style="font-size: 12px; color: #a0aec0; margin: 0;">
+                  We're here to help you get started!
                 </p>
               </td>
             </tr>
-          </tbody>
-        </table>
-      </div>
+          </table>
 
-      <div style='Margin:0px auto;max-width:600px;'>
-        <table
-          align='center'
-          border='0'
-          cellpadding='0'
-          cellspacing='0'
-          role='presentation'
-          style='width:100%;'
-        >
-          <tbody>
+          <!-- Footer info -->
+          <table
+            border="0"
+            cellpadding="0"
+            cellspacing="0"
+            width="600"
+            style="margin-top: 24px;"
+          >
             <tr>
-              <td style='text-align:center;padding:20px;'>
-                <p style='font-size:12px;color:#575757;'>[Company Name], 123
-                  Main St, Anytown, USA</p>
-                <p style='font-size:12px;color:#575757;'><a
-                    href='[Unsubscribe Link]'
-                    style='color:#575757;'
-                  >Unsubscribe</a>
-                  from our emails</p>
+              <td style="text-align: center; padding: 20px;">
+                <p style="font-size: 12px; color: #a0aec0; margin: 0 0 8px 0;">
+                  © 2025
+                  {{PlatformName}}. All rights reserved.
+                </p>
+                <p style="font-size: 12px; color: #a0aec0; margin: 0;">
+                  <a
+                    href="[Unsubscribe Link]"
+                    style="color: #a0aec0; text-decoration: none;"
+                  >
+                    Unsubscribe
+                  </a>
+                </p>
               </td>
             </tr>
-          </tbody>
-        </table>
-      </div>
-    </div>
-
+          </table>
+        </td>
+      </tr>
+    </table>
   </body>
-
 </html>
