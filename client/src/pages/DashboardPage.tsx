@@ -53,6 +53,22 @@ export default function DashboardPage() {
     fetchDashboardData();
   }, [fetchDashboardData]); // Dependency array for useEffect
 
+  // Auto-refresh documents when there are processing documents
+  useEffect(() => {
+    const hasProcessingDocs = documents.some(
+      (doc) => doc.processingStatus?.toUpperCase() === "PROCESSING"
+    );
+
+    if (hasProcessingDocs) {
+      // Poll every 3 seconds while documents are being processed
+      const intervalId = setInterval(() => {
+        fetchDocuments();
+      }, 3000);
+
+      return () => clearInterval(intervalId);
+    }
+  }, [documents, fetchDocuments]);
+
   // Function to handle successful document upload
   const handleUploadSuccess = () => {
     fetchDocuments(); // Re-fetch documents after a successful upload
