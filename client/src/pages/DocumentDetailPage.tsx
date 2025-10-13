@@ -124,10 +124,10 @@ export default function DocumentDetailPage() {
   const isLoading = isLoadingSummary || !currentDoc;
 
   return (
-    <div className="container py-10">
+    <div className="container py-8 md:py-12 mt-4">
       <Button
         variant="ghost"
-        className="mb-6 gap-2"
+        className="mb-8 gap-2 hover:bg-muted/50"
         onClick={() => navigate("/dashboard")}
       >
         <ArrowLeft className="h-4 w-4" />
@@ -141,7 +141,7 @@ export default function DocumentDetailPage() {
       ) : (
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           <div className="lg:col-span-2 space-y-6">
-            <Card>
+            <Card className="border-border/50 shadow-sm">
               <CardHeader>
                 <div className="flex justify-between items-start">
                   <div>
@@ -261,9 +261,9 @@ export default function DocumentDetailPage() {
           </div>
 
           <div>
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
+            <Card className="border-border/50 shadow-sm">
+              <CardHeader className="pb-4">
+                <CardTitle className="flex items-center gap-2 text-xl">
                   <Headphones className="h-5 w-5" />
                   Audio Summary
                 </CardTitle>
