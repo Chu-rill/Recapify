@@ -34,6 +34,10 @@ export const authService = {
       localStorage.setItem("token", response.data.token);
     }
 
+    if (response.data.refreshToken) {
+      localStorage.setItem("refreshToken", response.data.refreshToken);
+    }
+
     return response.data;
   },
 
@@ -46,6 +50,9 @@ export const authService = {
     if (response.data.token) {
       console.log(response);
       localStorage.setItem("token", response.data.token);
+    }
+    if (response.data.refreshToken) {
+      localStorage.setItem("refreshToken", response.data.refreshToken);
     }
     return response.data;
   },
@@ -77,6 +84,7 @@ export const authService = {
   // Logout user
   logout() {
     localStorage.removeItem("token");
+    localStorage.removeItem("refreshToken");
   },
 
   // Check if user is authenticated
@@ -94,6 +102,34 @@ export const authService = {
   async deleteAccount() {
     const response = await api.delete<AuthResponse>("/users");
     localStorage.removeItem("token");
+    localStorage.removeItem("refreshToken");
     return response.data;
+  },
+
+  // Refresh access token
+  async refreshToken() {
+    const refreshToken = localStorage.getItem("refreshToken");
+    if (!refreshToken) {
+      throw new Error("No refresh token available");
+    }
+
+    const response = await api.post<AuthResponse>("/auth/refresh", {
+      refreshToken,
+    });
+
+    if (response.data.token) {
+      localStorage.setItem("token", response.data.token);
+    }
+
+    if (response.data.refreshToken) {
+      localStorage.setItem("refreshToken", response.data.refreshToken);
+    }
+
+    return response.data;
+  },
+
+  // Get refresh token from storage
+  getRefreshToken() {
+    return localStorage.getItem("refreshToken");
   },
 };

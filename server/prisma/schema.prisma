@@ -7,24 +7,26 @@ generator client {
 }
 
 datasource db {
-  provider = "postgresql"
-  url      = env("DATABASE_URL")
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
 }
 
 model User {
-  id          String       @id @unique @default(cuid())
-  username    String
-  email       String       @unique
-  password    String?
-  phone       String?
-  profile     String?
-  role        Role         @default(USER)
-  isVerified  Boolean      @default(false)
-  createdAt   DateTime     @default(now())
-  updatedAt   DateTime     @updatedAt
-  OTP         Otp?
-  documents   Document[]
-  audioTracks AudioTrack[]
+  id            String         @id @unique @default(cuid())
+  username      String
+  email         String         @unique
+  password      String?
+  phone         String?
+  profile       String?
+  role          Role           @default(USER)
+  isVerified    Boolean        @default(false)
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+  OTP           Otp?
+  documents     Document[]
+  audioTracks   AudioTrack[]
+  refreshTokens RefreshToken[]
 }
 
 enum Role {
@@ -133,4 +135,17 @@ model UsageLog {
   action       String // e.g., "upload", "summarize", "generate_audio"
   timestamp    DateTime @default(now())
   metadata     Json? // Additional data about the operation
+}
+
+model RefreshToken {
+  id        String   @id @default(cuid())
+  token     String   @unique
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+  revoked   Boolean  @default(false)
+
+  @@index([userId])
+  @@index([token])
 }
