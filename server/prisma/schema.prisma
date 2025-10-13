@@ -45,6 +45,8 @@ model Document {
   id               String           @id @default(cuid())
   fileName         String
   fileType         String // e.g., "application/pdf"
+  fileUrl          String? // Public URL from Supabase Storage
+  filePath         String? // Path in Supabase Storage for deletion
   uploadedAt       DateTime         @default(now())
   processedAt      DateTime?
   extractedText    String
