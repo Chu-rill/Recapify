@@ -19,61 +19,51 @@ export class SummaryService {
     this.logger.log(`Starting summary generation for document: ${documentId}`);
 
     try {
-      const extractedText = await this.documentService.extractText(documentId);
+      // Get document details to retrieve the file URL
+      const document = await this.documentRepository.findDocumentById(documentId);
 
-      // If extraction failed, return the error
-      if (extractedText.error) {
-        this.logger.warn(`Text extraction failed: ${extractedText.message}`);
-        return {
-          status: "error",
-          error: true,
-          statusCode: extractedText.statusCode,
-          message: extractedText.message,
-        };
-      }
-
-      if (!extractedText.text) {
-        this.logger.warn(`No text content found in document: ${documentId}`);
+      if (!document) {
+        this.logger.warn(`Document not found: ${documentId}`);
         return {
           status: "error",
           error: true,
           statusCode: 404,
-          message: "Extracted text not found",
+          message: "Document not found",
         };
       }
 
-      // Truncate text if needed to respect token limits
-      const MAX_CHARS = 1000000; // 1 million characters
-      const textForSummary = extractedText.text.substring(0, MAX_CHARS);
-
-      // Check if text was truncated to inform user
-      const wasTruncated = extractedText.text.length > MAX_CHARS;
-      if (wasTruncated) {
-        this.logger.warn(
-          `Document text truncated from ${extractedText.text.length} to ${MAX_CHARS} characters`
-        );
+      if (!document.fileUrl) {
+        this.logger.warn(`No file URL found for document: ${documentId}`);
+        return {
+          status: "error",
+          error: true,
+          statusCode: 404,
+          message: "Document file URL not found",
+        };
       }
 
       this.logger.log(
-        `Generating summary with Gemini API for document: ${documentId}`
+        `Generating summary with Gemini API directly from file URL for document: ${documentId}`
       );
 
-      // Create prompt template for the AI model
+      // Create custom prompt for the AI model
       const promptTemplate = `
-      Please create a comprehensive summary of the following document:
-      
-      ${textForSummary}
-      
+      Please create a comprehensive summary of this document.
+
       Provide:
       1. A concise overall summary
-      2. Key points and insights
+      2. Key points and insights (as bullet points starting with -)
       3. Important details to remember
       `;
 
       // Track time for summary generation
       const startTime = Date.now();
-      const response = await this.geminiService.generateContent(promptTemplate);
+      const response = await this.geminiService.generateContentFromFileUrl(
+        document.fileUrl,
+        promptTemplate
+      );
       const generationTime = Date.now() - startTime;
+
       const summaryContent =
         response.candidates[0].content.text ||
         response.candidates[0].content.parts[0].text;
@@ -88,7 +78,6 @@ export class SummaryService {
         this.logger.error(
           `Summary content is not a string: ${typeof summaryContent}`
         );
-        // You might want to throw an error or return a default value here
         throw new Error("Summary content is not a string");
       }
 
@@ -117,11 +106,28 @@ export class SummaryService {
         processedAt: new Date(),
       });
 
+      // Delete the document from Supabase storage after successful summarization
+      this.logger.log(`Deleting document from Supabase storage: ${documentId}`);
+      if (document.filePath) {
+        try {
+          await this.documentService['supabaseService'].deleteDocument(document.filePath);
+          this.logger.log(`Document successfully deleted from Supabase: ${documentId}`);
+        } catch (deleteError) {
+          this.logger.error(
+            `Failed to delete document from Supabase: ${deleteError.message}`,
+            deleteError.stack
+          );
+          // Continue execution even if deletion fails
+        }
+      }
+
+      // Delete extracted text from database if it exists
+      await this.documentRepository.deleteExtractedText(documentId);
+
       this.logger.log(
         `Summary generation complete for document: ${documentId}`
       );
 
-      await this.documentRepository.deleteExtractedText(documentId);
       // Return the generated summary
       return {
         success: true,
@@ -132,8 +138,7 @@ export class SummaryService {
           shortSummary: shortSummary,
           keyPoints: keyPoints,
           documentId: documentId,
-          wasTruncated: wasTruncated,
-          textLength: extractedText.text.length,
+          wasTruncated: false, // No truncation when using file URL
           processedAt: new Date(),
         },
         message: "Summary generated successfully",

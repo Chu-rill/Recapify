@@ -23,29 +23,21 @@ export class DocumentService {
       this.logger.log(`Processing document upload: ${file.originalname}`);
 
       // Upload document to Supabase and get public URL
-      const { publicUrl, path: filePath } = await this.supabaseService.uploadDocument(
-        file,
-        userId,
-      );
+      const { publicUrl, path: filePath } =
+        await this.supabaseService.uploadDocument(file, userId);
 
-      // Extract text from the PDF buffer
-      const extractedText =
-        await this.supabaseService.extractTextFromPdfBuffer(file.buffer);
-
-      if (!extractedText) {
-        this.logger.error("Failed to extract text from document.");
-        throw new Error("Failed to extract text from document.");
-      }
+      this.logger.log(`Document uploaded to Supabase: ${publicUrl}`);
 
       // Save document metadata to database with public URL
+      // No text extraction - Gemini will process directly from URL
       const document = await this.documentRepository.createDocument(
         file.originalname,
         file.mimetype,
         userId,
-        extractedText,
+        "", // No extracted text needed
         ProcessingStatus.PROCESSING,
         publicUrl,
-        filePath,
+        filePath
       );
 
       this.logger.log(`Document successfully uploaded: ${document.id}`);

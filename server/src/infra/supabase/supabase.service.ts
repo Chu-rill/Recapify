@@ -18,13 +18,24 @@ export class SupabaseService {
       throw new Error('Supabase URL and Service Key must be provided');
     }
 
+    // Use service role key to bypass RLS policies
     this.supabase = createClient(supabaseUrl, supabaseKey, {
       auth: {
         persistSession: false,
+        autoRefreshToken: false,
+      },
+      db: {
+        schema: 'public',
+      },
+      global: {
+        headers: {
+          'X-Client-Info': 'recapify-server',
+        },
+        fetch: fetch.bind(globalThis),
       },
     });
 
-    this.logger.log('Supabase client initialized successfully');
+    this.logger.log('Supabase client initialized successfully with service role key');
   }
 
   /**
@@ -44,6 +55,20 @@ export class SupabaseService {
         `Uploading document: ${file.originalname} (${Math.round(file.size / 1024)} KB) to path: ${filePath}`,
       );
 
+      // First, check if bucket exists
+      const { data: buckets, error: bucketError } = await this.supabase.storage.listBuckets();
+
+      if (bucketError) {
+        this.logger.error(`Failed to list buckets: ${bucketError.message}`);
+        this.logger.error(`Full bucket error:`, JSON.stringify(bucketError, null, 2));
+      } else {
+        this.logger.log(`Available buckets: ${buckets.map(b => b.name).join(', ')}`);
+        const bucketExists = buckets.some(b => b.name === this.BUCKET_NAME);
+        if (!bucketExists) {
+          throw new Error(`Bucket '${this.BUCKET_NAME}' does not exist. Available buckets: ${buckets.map(b => b.name).join(', ')}`);
+        }
+      }
+
       // Upload file to Supabase Storage
       const { data, error } = await this.supabase.storage
         .from(this.BUCKET_NAME)
@@ -54,6 +79,7 @@ export class SupabaseService {
 
       if (error) {
         this.logger.error(`Supabase upload error: ${error.message}`);
+        this.logger.error(`Full error details:`, JSON.stringify(error, null, 2));
         throw new Error(`Failed to upload document: ${error.message}`);
       }
 
