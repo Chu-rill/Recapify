@@ -11,7 +11,9 @@ export class DocumentRepository {
     fileType: string,
     userId: string,
     extractedText: string,
-    processingStatus: ProcessingStatus
+    processingStatus: ProcessingStatus,
+    fileUrl?: string,
+    filePath?: string,
   ) {
     const document = await this.prisma.document.create({
       data: {
@@ -20,6 +22,8 @@ export class DocumentRepository {
         userId,
         extractedText,
         processingStatus,
+        fileUrl,
+        filePath,
       },
     });
     return document;

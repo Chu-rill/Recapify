@@ -23,7 +23,6 @@ import ProfilePage from "@/pages/ProfilePage";
 import NotFoundPage from "@/pages/NotFoundPage";
 import GoogleOAuthCallback from "./components/auth/GoogleOAuthCallback";
 import Otp from "./pages/Otp";
-import ResendOtpPage from "./pages/ResendOtpPage";
 
 function App() {
   const { isAuthenticated, fetchUser } = useAuthStore();
@@ -55,7 +54,6 @@ function App() {
             />
             <Route path="/oauth-redirect" element={<GoogleOAuthCallback />} />
             <Route path="/otp" element={<Otp />} />
-            <Route path="/resend-otp" element={<ResendOtpPage />} />
 
             {/* Protected routes */}
             <Route

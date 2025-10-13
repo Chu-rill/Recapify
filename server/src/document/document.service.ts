@@ -6,7 +6,7 @@ import {
 } from "@nestjs/common";
 import { DocumentRepository } from "./document.repository";
 import { ProcessingStatus } from "@generated/prisma";
-import { CloudinaryService } from "src/infra/cloudinary/cloudinary.service";
+import { SupabaseService } from "src/infra/supabase/supabase.service";
 import { PrismaService } from "src/infra/db/prisma.service";
 
 @Injectable()
@@ -14,7 +14,7 @@ export class DocumentService {
   private readonly logger = new Logger(DocumentService.name);
   constructor(
     private documentRepository: DocumentRepository,
-    private cloudinaryService: CloudinaryService,
+    private supabaseService: SupabaseService,
     private readonly prisma: PrismaService
   ) {}
 
@@ -22,22 +22,22 @@ export class DocumentService {
     try {
       this.logger.log(`Processing document upload: ${file.originalname}`);
 
-      // Extract text from the PDF buffer
-      const extractedText =
-        await this.cloudinaryService.extractTextFromPdfBuffer(file.buffer);
+      // Upload document to Supabase and get public URL
+      const { publicUrl, path: filePath } =
+        await this.supabaseService.uploadDocument(file, userId);
 
-      if (!extractedText) {
-        this.logger.error("Failed to extract text from document .");
-        throw new Error("Failed to extract text from document.");
-      }
+      this.logger.log(`Document uploaded to Supabase: ${publicUrl}`);
 
-      // Save document metadata to database
+      // Save document metadata to database with public URL
+      // No text extraction - Gemini will process directly from URL
       const document = await this.documentRepository.createDocument(
         file.originalname,
         file.mimetype,
         userId,
-        extractedText,
-        ProcessingStatus.PROCESSING
+        "", // No extracted text needed
+        ProcessingStatus.PROCESSING,
+        publicUrl,
+        filePath
       );
 
       this.logger.log(`Document successfully uploaded: ${document.id}`);
@@ -51,6 +51,7 @@ export class DocumentService {
           name: document.fileName,
           fileType: document.fileType,
           userId: document.userId,
+          fileUrl: document.fileUrl,
           createdAt: document.uploadedAt,
         },
         message: "Document uploaded successfully",
@@ -149,7 +150,7 @@ export class DocumentService {
           id: documentId,
           userId: userId,
         },
-        select: { id: true },
+        select: { id: true, filePath: true },
       });
 
       if (!document) {
@@ -159,7 +160,12 @@ export class DocumentService {
         };
       }
 
-      // If validation passes, delete the document
+      // Delete from Supabase Storage if filePath exists
+      if (document.filePath) {
+        await this.supabaseService.deleteDocument(document.filePath);
+      }
+
+      // Delete the document from database
       await this.prisma.document.delete({
         where: { id: documentId },
       });

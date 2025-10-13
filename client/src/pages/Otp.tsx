@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   InputOTP,
   InputOTPGroup,
@@ -14,9 +14,19 @@ import { useAuthStore } from "../lib/store";
 const Otp = () => {
   const [otp, setOtp] = useState("");
   const [loading, setLoading] = useState(false);
+  const [resending, setResending] = useState(false);
+  const [countdown, setCountdown] = useState(0);
   const user = useAuthStore((state) => state.user);
-  const { validateOTP } = useAuthStore();
+  const { validateOTP, resendOTP } = useAuthStore();
   const navigate = useNavigate();
+
+  // Countdown timer effect
+  useEffect(() => {
+    if (countdown > 0) {
+      const timer = setTimeout(() => setCountdown(countdown - 1), 1000);
+      return () => clearTimeout(timer);
+    }
+  }, [countdown]);
 
   const handleVerify = async () => {
     if (!user?.email) {
@@ -34,11 +44,35 @@ const Otp = () => {
       await validateOTP(user.email, otp);
 
       toast.success("OTP verified successfully!");
-      navigate("/dashboard"); //
+      navigate("/dashboard");
     } catch (error) {
       toast.error("An error occurred during verification");
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleResendOTP = async () => {
+    if (!user?.email) {
+      toast.error("Email session expired. Please sign up again.");
+      navigate("/signup");
+      return;
+    }
+
+    if (countdown > 0) {
+      return;
+    }
+
+    setResending(true);
+    try {
+      await resendOTP(user.email);
+      toast.success("OTP has been resent to your email!");
+      setCountdown(30); // Start 30 second countdown
+      setOtp(""); // Clear the OTP input
+    } catch (error) {
+      toast.error("Failed to resend OTP. Please try again.");
+    } finally {
+      setResending(false);
     }
   };
 
@@ -74,15 +108,25 @@ const Otp = () => {
           >
             {loading ? "Verifying..." : "Verify OTP"}
           </Button>
+
+          <div className="text-center pt-4">
+            <p className="text-sm text-muted-foreground mb-2">
+              Didn't receive the code?
+            </p>
+            <Button
+              variant="link"
+              className="text-blue-600 hover:text-violet-600 font-semibold p-0 h-auto"
+              onClick={handleResendOTP}
+              disabled={countdown > 0 || resending}
+            >
+              {resending
+                ? "Sending..."
+                : countdown > 0
+                ? `Resend OTP in ${countdown}s`
+                : "Resend OTP"}
+            </Button>
+          </div>
         </CardContent>
-        <div className="px-6 pb-6 pt-2 ">
-          {/* <Link
-            to="/resend-otp"
-            className="text-hotel-navy font-medium hover:underline"
-          >
-            Resend OTP
-          </Link> */}
-        </div>
       </Card>
     </div>
   );

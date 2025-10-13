@@ -1,4 +1,4 @@
-import { HttpStatus, Injectable, NotFoundException } from "@nestjs/common";
+import { HttpStatus, Injectable, NotFoundException, UnauthorizedException } from "@nestjs/common";
 import { UserRepository } from "src/user/user.repository";
 import { JwtService } from "@nestjs/jwt";
 import {
@@ -13,6 +13,8 @@ import {
   CreateSignupDto,
   ResendOTPDto,
 } from "./validation";
+import { PrismaService } from "src/infra/db/prisma.service";
+import * as crypto from "crypto";
 
 @Injectable()
 export class AuthService {
@@ -20,8 +22,56 @@ export class AuthService {
     private userRespository: UserRepository,
     private jwt: JwtService,
     private otp: OtpService,
-    private mailService: MailService
+    private mailService: MailService,
+    private prisma: PrismaService
   ) {}
+
+  // Helper method to generate refresh token
+  private async generateRefreshToken(userId: string): Promise<string> {
+    const refreshToken = crypto.randomBytes(64).toString("hex");
+    const expiresAt = new Date();
+    expiresAt.setDate(expiresAt.getDate() + 7); // 7 days expiry
+
+    await this.prisma.refreshToken.create({
+      data: {
+        token: refreshToken,
+        userId,
+        expiresAt,
+      },
+    });
+
+    return refreshToken;
+  }
+
+  // Helper method to clean up old refresh tokens for a user
+  private async cleanupOldRefreshTokens(userId: string): Promise<void> {
+    // Remove expired tokens
+    await this.prisma.refreshToken.deleteMany({
+      where: {
+        userId,
+        expiresAt: {
+          lt: new Date(),
+        },
+      },
+    });
+
+    // Keep only the 5 most recent tokens per user
+    const tokens = await this.prisma.refreshToken.findMany({
+      where: { userId },
+      orderBy: { createdAt: "desc" },
+      skip: 5,
+    });
+
+    if (tokens.length > 0) {
+      await this.prisma.refreshToken.deleteMany({
+        where: {
+          id: {
+            in: tokens.map((t) => t.id),
+          },
+        },
+      });
+    }
+  }
   async signup(dto: CreateSignupDto) {
     try {
       // Check if user already exists
@@ -129,6 +179,11 @@ export class AuthService {
       };
 
       const token = await this.jwt.signAsync(payload);
+
+      // Generate refresh token
+      await this.cleanupOldRefreshTokens(user.id);
+      const refreshToken = await this.generateRefreshToken(user.id);
+
       return {
         statusCode: HttpStatus.OK,
         message: "login successful",
@@ -141,6 +196,7 @@ export class AuthService {
           isVerified: user.isVerified,
         },
         token: token,
+        refreshToken: refreshToken,
       };
     } catch (error) {
       console.log("Error in login:", error);
@@ -169,6 +225,10 @@ export class AuthService {
 
     const token = await this.jwt.signAsync(payload);
 
+    // Generate refresh token
+    await this.cleanupOldRefreshTokens(user.id);
+    const refreshToken = await this.generateRefreshToken(user.id);
+
     return {
       statusCode: HttpStatus.OK,
       message: "User verified successfully",
@@ -181,6 +241,7 @@ export class AuthService {
         isVerified: true,
       },
       token: token,
+      refreshToken: refreshToken,
     };
   }
   async resendOTP(dto: ResendOTPDto) {
@@ -207,5 +268,99 @@ export class AuthService {
       statusCode: HttpStatus.CREATED,
       message: "OTP Send",
     };
+  }
+
+  async refreshAccessToken(refreshToken: string) {
+    try {
+      // Find the refresh token in database
+      const tokenRecord = await this.prisma.refreshToken.findUnique({
+        where: { token: refreshToken },
+        include: { user: true },
+      });
+
+      if (!tokenRecord) {
+        throw new UnauthorizedException("Invalid refresh token");
+      }
+
+      // Check if token is expired
+      if (tokenRecord.expiresAt < new Date()) {
+        // Delete expired token
+        await this.prisma.refreshToken.delete({
+          where: { id: tokenRecord.id },
+        });
+        throw new UnauthorizedException("Refresh token expired");
+      }
+
+      // Check if token is revoked
+      if (tokenRecord.revoked) {
+        throw new UnauthorizedException("Refresh token has been revoked");
+      }
+
+      // Generate new access token
+      const payload = {
+        id: tokenRecord.user.id,
+        username: tokenRecord.user.username,
+        role: tokenRecord.user.role,
+      };
+
+      const newAccessToken = await this.jwt.signAsync(payload);
+
+      // Optionally rotate refresh token for enhanced security
+      // Delete old refresh token and create new one
+      await this.prisma.refreshToken.delete({
+        where: { id: tokenRecord.id },
+      });
+
+      const newRefreshToken = await this.generateRefreshToken(
+        tokenRecord.user.id
+      );
+
+      return {
+        statusCode: HttpStatus.OK,
+        message: "Token refreshed successfully",
+        token: newAccessToken,
+        refreshToken: newRefreshToken,
+        data: {
+          id: tokenRecord.user.id,
+          username: tokenRecord.user.username,
+          email: tokenRecord.user.email,
+          role: tokenRecord.user.role,
+        },
+      };
+    } catch (error) {
+      if (error instanceof UnauthorizedException) {
+        throw error;
+      }
+      console.log("Error refreshing token:", error);
+      throw new UnauthorizedException("Failed to refresh token");
+    }
+  }
+
+  async revokeRefreshToken(refreshToken: string) {
+    try {
+      const tokenRecord = await this.prisma.refreshToken.findUnique({
+        where: { token: refreshToken },
+      });
+
+      if (!tokenRecord) {
+        return {
+          statusCode: HttpStatus.NOT_FOUND,
+          message: "Refresh token not found",
+        };
+      }
+
+      await this.prisma.refreshToken.update({
+        where: { id: tokenRecord.id },
+        data: { revoked: true },
+      });
+
+      return {
+        statusCode: HttpStatus.OK,
+        message: "Refresh token revoked successfully",
+      };
+    } catch (error) {
+      console.log("Error revoking token:", error);
+      throw new Error("Failed to revoke refresh token");
+    }
   }
 }

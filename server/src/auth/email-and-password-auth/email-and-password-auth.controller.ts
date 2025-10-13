@@ -39,4 +39,14 @@ export class AuthController {
   resendOTP(@Body() dto: ResendOTPDto) {
     return this.authService.resendOTP(dto);
   }
+
+  @Post("/refresh")
+  async refreshToken(@Body("refreshToken") refreshToken: string) {
+    return this.authService.refreshAccessToken(refreshToken);
+  }
+
+  @Post("/revoke")
+  async revokeToken(@Body("refreshToken") refreshToken: string) {
+    return this.authService.revokeRefreshToken(refreshToken);
+  }
 }

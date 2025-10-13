@@ -53,6 +53,22 @@ export default function DashboardPage() {
     fetchDashboardData();
   }, [fetchDashboardData]); // Dependency array for useEffect
 
+  // Auto-refresh documents when there are processing documents
+  useEffect(() => {
+    const hasProcessingDocs = documents.some(
+      (doc) => doc.processingStatus?.toUpperCase() === "PROCESSING"
+    );
+
+    if (hasProcessingDocs) {
+      // Poll every 3 seconds while documents are being processed
+      const intervalId = setInterval(() => {
+        fetchDocuments();
+      }, 3000);
+
+      return () => clearInterval(intervalId);
+    }
+  }, [documents, fetchDocuments]);
+
   // Function to handle successful document upload
   const handleUploadSuccess = () => {
     fetchDocuments(); // Re-fetch documents after a successful upload
@@ -74,11 +90,11 @@ export default function DashboardPage() {
   };
 
   return (
-    <div className="container py-10">
-      <div className="flex flex-col space-y-6">
-        <div className="flex flex-col space-y-2">
-          <h1 className="text-3xl font-bold tracking-tight">Dashboard</h1>
-          <p className="text-muted-foreground">
+    <div className="container py-8 md:py-12 mt-4">
+      <div className="flex flex-col space-y-8">
+        <div className="flex flex-col space-y-3">
+          <h1 className="text-4xl font-bold tracking-tight">Dashboard</h1>
+          <p className="text-muted-foreground text-lg">
             Upload documents, view summaries, and generate audio.
           </p>
         </div>
@@ -92,10 +108,10 @@ export default function DashboardPage() {
           </Alert>
         )} */}
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          <Card>
-            <CardHeader>
-              <CardTitle>Upload Document</CardTitle>
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <Card className="border-border/50 shadow-sm">
+            <CardHeader className="pb-4">
+              <CardTitle className="text-xl">Upload Document</CardTitle>
               <CardDescription>
                 Upload a document to generate an AI summary
               </CardDescription>
@@ -115,20 +131,20 @@ export default function DashboardPage() {
             </CardContent>
           </Card>
 
-          <Card className="md:col-span-2">
-            <CardHeader>
-              <CardTitle>Recent Documents</CardTitle>
+          <Card className="lg:col-span-2 border-border/50 shadow-sm">
+            <CardHeader className="pb-4">
+              <CardTitle className="text-xl">Recent Documents</CardTitle>
               <CardDescription>
                 Your recently uploaded documents and summaries
               </CardDescription>
             </CardHeader>
             <CardContent>
               {isLoading ? (
-                <div className="flex justify-center py-8">
+                <div className="flex justify-center py-12">
                   <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
                 </div>
               ) : documents.length === 0 ? (
-                <div className="flex flex-col items-center justify-center py-8 text-center">
+                <div className="flex flex-col items-center justify-center py-12 text-center">
                   <p className="text-muted-foreground mb-4">
                     You haven't uploaded any documents yet.
                   </p>
@@ -147,10 +163,10 @@ export default function DashboardPage() {
                 </div>
               )}
             </CardContent>
-            <CardFooter>
+            <CardFooter className="pt-4">
               <Button
                 variant="ghost"
-                className="w-full"
+                className="w-full hover:bg-muted/50"
                 onClick={handleViewAllDocuments}
               >
                 View All Documents
@@ -164,8 +180,9 @@ export default function DashboardPage() {
           value={activeTab}
           onValueChange={setActiveTab}
           data-value={activeTab}
+          className="w-full"
         >
-          <TabsList>
+          <TabsList className="grid w-full max-w-md grid-cols-2">
             <TabsTrigger value="documents">Documents</TabsTrigger>
             <TabsTrigger value="audio">Audio Summaries</TabsTrigger>
           </TabsList>
@@ -174,20 +191,20 @@ export default function DashboardPage() {
             className="mt-6"
             data-value="documents"
           >
-            <Card>
-              <CardHeader>
-                <CardTitle>All Documents</CardTitle>
+            <Card className="border-border/50 shadow-sm">
+              <CardHeader className="pb-4">
+                <CardTitle className="text-xl">All Documents</CardTitle>
                 <CardDescription>
                   Manage your documents and summaries
                 </CardDescription>
               </CardHeader>
               <CardContent>
                 {isDocumentLoading ? (
-                  <div className="flex justify-center py-8">
+                  <div className="flex justify-center py-12">
                     <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
                   </div>
                 ) : documents.length === 0 ? (
-                  <div className="flex flex-col items-center justify-center py-8 text-center">
+                  <div className="flex flex-col items-center justify-center py-12 text-center">
                     <p className="text-muted-foreground mb-4">
                       You haven't uploaded any documents yet.
                     </p>
@@ -209,20 +226,20 @@ export default function DashboardPage() {
             </Card>
           </TabsContent>
           <TabsContent value="audio" className="mt-6" data-value="audio">
-            <Card>
-              <CardHeader>
-                <CardTitle>Audio Summaries</CardTitle>
+            <Card className="border-border/50 shadow-sm">
+              <CardHeader className="pb-4">
+                <CardTitle className="text-xl">Audio Summaries</CardTitle>
                 <CardDescription>
                   Listen to your generated audio summaries
                 </CardDescription>
               </CardHeader>
               <CardContent>
                 {isAudioLoading ? (
-                  <div className="flex justify-center py-8">
+                  <div className="flex justify-center py-12">
                     <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
                   </div>
                 ) : audioList.length === 0 ? (
-                  <div className="flex flex-col items-center justify-center py-8 text-center">
+                  <div className="flex flex-col items-center justify-center py-12 text-center">
                     <p className="text-muted-foreground mb-4">
                       You haven't generated any audio summaries yet.
                     </p>

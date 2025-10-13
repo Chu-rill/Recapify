@@ -6,7 +6,6 @@ import * as util from "util";
 import * as path from "path";
 import axios from "axios";
 import { ConfigService } from "@nestjs/config";
-import { CloudinaryService } from "src/infra/cloudinary/cloudinary.service";
 import { AudioRepository } from "./audio.repository";
 
 interface UnrealSpeechResponse {
@@ -31,7 +30,6 @@ export class AudioService {
   constructor(
     private prisma: PrismaService,
     private configService: ConfigService,
-    private cloudinaryService: CloudinaryService,
     private audioRepository: AudioRepository,
     private summaryRepository: SummaryRepository
   ) {
