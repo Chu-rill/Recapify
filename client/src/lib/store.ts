@@ -242,12 +242,13 @@ export const useDocumentStore = create<DocumentState>()(
     uploadDocument: async (file: File) => {
       set({ isLoading: true, error: null, uploadProgress: 0 });
       try {
-        const { data: document } = await import("../services/documents").then(
+        const response = await import("../services/documents").then(
           (module) =>
             module.documentService.uploadDocument(file, (progress) =>
               set({ uploadProgress: progress })
             )
         );
+        const document = response.data;
 
         // Update documents list
         const documents = [...get().documents, document];
