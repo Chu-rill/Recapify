@@ -165,11 +165,26 @@ export class DocumentService {
         await this.supabaseService.deleteDocument(document.filePath);
       }
 
-      // Delete the document from database
-      await this.prisma.document.delete({
-        where: { id: documentId },
+      // Delete related records first to avoid foreign key constraint errors
+      // Using a transaction to ensure all operations succeed or fail together
+      await this.prisma.$transaction(async (tx) => {
+        // Delete related audio tracks
+        await tx.audioTrack.deleteMany({
+          where: { documentId: documentId },
+        });
+
+        // Delete related summaries
+        await tx.summary.deleteMany({
+          where: { documentId: documentId },
+        });
+
+        // Finally delete the document
+        await tx.document.delete({
+          where: { id: documentId },
+        });
       });
 
+      this.logger.log(`Document and related records deleted successfully: ${documentId}`);
       return { success: true, message: "Document deleted successfully" };
     } catch (error) {
       // Log the error

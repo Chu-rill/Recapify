@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import { Document } from "@/types";
@@ -5,6 +6,16 @@ import { useDocumentStore, useSummaryStore } from "@/lib/store";
 import { Card, CardContent, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { FileText, Trash2, ExternalLink, Loader2, RefreshCw, Sparkles } from "lucide-react";
 import { formatDate } from "@/lib/format";
 
@@ -16,28 +27,30 @@ export default function DocumentsList({ documents }: DocumentsListProps) {
   const navigate = useNavigate();
   const { deleteDocument, isLoading } = useDocumentStore();
   const { generateSummary, isLoading: isSummaryLoading } = useSummaryStore();
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [documentToDelete, setDocumentToDelete] = useState<string | null>(null);
 
   const handleViewDocument = (documentId: string) => {
     navigate(`/documents/${documentId}`);
   };
 
-  const handleDeleteDocument = async (
-    documentId: string,
-    event: React.MouseEvent
-  ) => {
+  const handleDeleteClick = (documentId: string, event: React.MouseEvent) => {
     event.stopPropagation();
+    setDocumentToDelete(documentId);
+    setDeleteDialogOpen(true);
+  };
 
-    if (
-      confirm(
-        "Are you sure you want to delete this document? This action cannot be undone."
-      )
-    ) {
-      try {
-        await deleteDocument(documentId);
-        toast.success("Document deleted successfully");
-      } catch (error) {
-        toast.error("Failed to delete document");
-      }
+  const confirmDelete = async () => {
+    if (!documentToDelete) return;
+
+    try {
+      await deleteDocument(documentToDelete);
+      toast.success("Document deleted successfully");
+    } catch (error) {
+      toast.error("Failed to delete document");
+    } finally {
+      setDeleteDialogOpen(false);
+      setDocumentToDelete(null);
     }
   };
 
@@ -181,7 +194,7 @@ export default function DocumentsList({ documents }: DocumentsListProps) {
                 size="sm"
                 className="flex gap-1"
                 disabled={isLoading}
-                onClick={(e) => handleDeleteDocument(document.id, e)}
+                onClick={(e) => handleDeleteClick(document.id, e)}
               >
                 {isLoading ? (
                   <Loader2 className="h-4 w-4 animate-spin" />
@@ -227,6 +240,36 @@ export default function DocumentsList({ documents }: DocumentsListProps) {
           </Card>
         );
       })}
+
+      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Document</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete this document? This action cannot be undone.
+              All associated summaries and audio files will also be deleted.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => setDocumentToDelete(null)}>
+              Cancel
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={confirmDelete}
+              className="bg-destructive hover:bg-destructive/90"
+            >
+              {isLoading ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  Deleting...
+                </>
+              ) : (
+                "Delete"
+              )}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
