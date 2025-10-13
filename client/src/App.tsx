@@ -23,6 +23,7 @@ import ProfilePage from "@/pages/ProfilePage";
 import NotFoundPage from "@/pages/NotFoundPage";
 import GoogleOAuthCallback from "./components/auth/GoogleOAuthCallback";
 import Otp from "./pages/Otp";
+import { Analytics } from "@vercel/analytics/react";
 
 function App() {
   const { isAuthenticated, fetchUser } = useAuthStore();
@@ -85,6 +86,7 @@ function App() {
             <Route path="*" element={<NotFoundPage />} />
           </Route>
         </Routes>
+        <Analytics/>
         <Toaster position="top-right" />
       </Router>
     </ThemeProvider>
