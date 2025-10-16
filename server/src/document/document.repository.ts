@@ -32,12 +32,21 @@ export class DocumentRepository {
   async findDocumentById(id: string) {
     return this.prisma.document.findUnique({
       where: { id },
+      include: {
+        summary: true,
+      },
     });
   }
 
   async findDocumentsByUserId(userId: string) {
     return this.prisma.document.findMany({
       where: { userId },
+      include: {
+        summary: true,
+      },
+      orderBy: {
+        uploadedAt: 'desc',
+      },
     });
   }
 
@@ -91,17 +100,36 @@ export class DocumentRepository {
   }
 
   async findAllDocument() {
-    return this.prisma.document.findMany();
+    return this.prisma.document.findMany({
+      include: {
+        summary: true,
+      },
+      orderBy: {
+        uploadedAt: 'desc',
+      },
+    });
   }
 
   async findDocumentByUserId(userId: string) {
     return this.prisma.document.findMany({
       where: { userId },
+      include: {
+        summary: true,
+      },
+      orderBy: {
+        uploadedAt: 'desc',
+      },
     });
   }
   async findFirstDocumentByUserId(userId: string) {
     return this.prisma.document.findFirst({
       where: { userId },
+      include: {
+        summary: true,
+      },
+      orderBy: {
+        uploadedAt: 'desc',
+      },
     });
   }
 }

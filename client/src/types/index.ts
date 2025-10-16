@@ -24,6 +24,7 @@ export interface Document {
   userId: string;
   uploadedAt: string;
   processingStatus?: "PENDING" | "PROCESSING" | "COMPLETED" | "FAILED";
+  summary?: Summary | null;
 }
 
 export interface DocumentResponse {
