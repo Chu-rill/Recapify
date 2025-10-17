@@ -59,6 +59,7 @@ export default function DocumentDetailPage() {
         }
 
         // Fetch summary for this document
+   
         setIsLoadingSummary(true);
         await fetchSummary(documentId);
         setIsLoadingSummary(false);
@@ -122,6 +123,9 @@ export default function DocumentDetailPage() {
   };
 
   const isLoading = isLoadingSummary || !currentDoc;
+  console.log("all documents:",documents)
+console.log("hello")
+     console.log("document id:",documentId)
 
   return (
     <div className="container py-8 md:py-12 mt-4">
