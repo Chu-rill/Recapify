@@ -194,10 +194,17 @@ export class AudioService {
   async getAudiosByUserId(userId: string) {
     this.logger.log(`Fetching audios for user ID: ${userId}`);
     const audios = await this.audioRepository.findAudiosByUserId(userId);
+
     if (!audios || audios.length === 0) {
-      this.logger.warn(`No audios found for user ID: ${userId}`);
-      throw new Error(`No audios found for user ID: ${userId}`);
+      this.logger.log(`No audios found for user ID: ${userId} - returning empty array`);
+      return {
+        success: true,
+        statusCode: 200,
+        data: [],
+        message: "No audios found",
+      };
     }
+
     return {
       success: true,
       statusCode: 200,

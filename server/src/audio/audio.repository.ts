@@ -43,6 +43,9 @@ export class AudioRepository {
   async findAudiosByUserId(userId: string) {
     return this.prisma.audioTrack.findMany({
       where: { userId },
+      orderBy: {
+        createdAt: 'desc',
+      },
     });
   }
 }
