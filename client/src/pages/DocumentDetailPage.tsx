@@ -83,14 +83,24 @@ export default function DocumentDetailPage() {
 
   const handleGenerateAudio = async () => {
     const summaryToUse = currentDoc?.summary || currentSummary;
-    if (!summaryToUse) return;
 
+    if (!summaryToUse) {
+      console.error("No summary available for audio generation");
+      toast.error("No summary available to generate audio");
+      return;
+    }
+
+    console.log("Generating audio for summary:", summaryToUse.id);
     setIsGeneratingAudio(true);
+
     try {
-      await generateAudio(summaryToUse.id);
+      const result = await generateAudio(summaryToUse.id);
+      console.log("Audio generation successful:", result);
       toast.success("Audio summary generated successfully");
     } catch (error) {
-      toast.error("Failed to generate audio summary");
+      console.error("Audio generation failed:", error);
+      const errorMessage = error instanceof Error ? error.message : "Failed to generate audio summary";
+      toast.error(errorMessage);
     } finally {
       setIsGeneratingAudio(false);
     }
