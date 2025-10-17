@@ -2,6 +2,7 @@ import { create } from "zustand";
 import { devtools, persist } from "zustand/middleware";
 import { User, Document, Summary, Audio, AllSummaryResponse } from "../types";
 import { authService } from "../services/auth";
+import { audioService } from "../services/audio";
 
 interface AuthState {
   user: User | null;
@@ -367,26 +368,26 @@ export const useAudioStore = create<AudioState>()(
     fetchAudioList: async () => {
       set({ isLoading: true, error: null });
       try {
-        const { data: audioList } = await import("../services/audio").then(
-          (module) => module.audioService.getAllAudio()
-        );
+        const { data: audioList } = await audioService.getAllAudio();
 
-        set({ audioList, isLoading: false });
-        return audioList;
+        // Ensure audioList is an array even if undefined/null
+        const safeAudioList = Array.isArray(audioList) ? audioList : [];
+        set({ audioList: safeAudioList, isLoading: false });
+        return safeAudioList;
       } catch (error) {
         const message =
           error instanceof Error ? error.message : "Failed to fetch audio list";
-        set({ error: message, isLoading: false });
-        throw error;
+        console.error("Error fetching audio list:", error);
+        // Set empty array on error instead of throwing
+        set({ audioList: [], error: message, isLoading: false });
+        return [];
       }
     },
 
     generateAudio: async (summaryId: string) => {
       set({ isLoading: true, error: null });
       try {
-        const { data: audio } = await import("../services/audio").then(
-          (module) => module.audioService.generateAudio(summaryId)
-        );
+        const { data: audio } = await audioService.generateAudio(summaryId);
 
         // Update audio list
         const audioList = [...get().audioList, audio];
@@ -408,9 +409,7 @@ export const useAudioStore = create<AudioState>()(
     fetchAudio: async (audioId: string) => {
       set({ isLoading: true, error: null });
       try {
-        const { data: audio } = await import("../services/audio").then(
-          (module) => module.audioService.getAudio(audioId)
-        );
+        const { data: audio } = await audioService.getAudio(audioId);
 
         set({ currentAudio: audio, isLoading: false });
         return audio;
@@ -425,9 +424,7 @@ export const useAudioStore = create<AudioState>()(
     deleteAudio: async (audioId: string) => {
       set({ isLoading: true, error: null });
       try {
-        await import("../services/audio").then((module) =>
-          module.audioService.deleteAudio(audioId)
-        );
+        await audioService.deleteAudio(audioId);
 
         // Update audio list
         const audioList = get().audioList.filter(
