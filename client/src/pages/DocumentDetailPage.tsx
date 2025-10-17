@@ -82,11 +82,12 @@ export default function DocumentDetailPage() {
   ]);
 
   const handleGenerateAudio = async () => {
-    if (!currentSummary) return;
+    const summaryToUse = currentDoc?.summary || currentSummary;
+    if (!summaryToUse) return;
 
     setIsGeneratingAudio(true);
     try {
-      await generateAudio(currentSummary.id);
+      await generateAudio(summaryToUse.id);
       toast.success("Audio summary generated successfully");
     } catch (error) {
       toast.error("Failed to generate audio summary");
@@ -123,9 +124,24 @@ export default function DocumentDetailPage() {
   };
 
   const isLoading = isLoadingSummary || !currentDoc;
-  console.log("all documents:",documents)
-console.log("hello")
-     console.log("document id:",documentId)
+
+  // DEBUG LOGS
+  // console.log("=== DOCUMENT DETAIL DEBUG ===");
+  // console.log("documentId:", documentId);
+  // console.log("all documents:", documents);
+  // console.log("currentDoc:", currentDoc);
+  // console.log("currentDoc.summary:", currentDoc?.summary);
+  // console.log("currentSummary (from store):", currentSummary);
+  // console.log("isLoadingSummary:", isLoadingSummary);
+  // console.log("Render condition check:", {
+  //   hasCurrentSummary: !!currentSummary,
+  //   isLoadingSummary: isLoadingSummary,
+  //   willRenderSummary: !!currentSummary && !isLoadingSummary
+  // });
+  // console.log("===========================");
+
+  // Use summary from document if available, fallback to store
+  const displaySummary = currentDoc?.summary || currentSummary;
 
   return (
     <div className="container py-8 md:py-12 mt-4">
@@ -167,14 +183,14 @@ console.log("hello")
               </CardHeader>
 
               <CardContent>
-                {currentSummary ? (
+                {displaySummary ? (
                   <div className="space-y-4">
                     <div>
                       <h3 className="text-lg font-medium mb-2">
                         Short Summary
                       </h3>
                       <p className="text-muted-foreground text-sm">
-                        {currentSummary.shortSummary}
+                        {displaySummary.shortSummary}
                       </p>
                     </div>
 
@@ -187,7 +203,7 @@ console.log("hello")
                           variant="ghost"
                           size="sm"
                           className="h-8 gap-1"
-                          onClick={() => handleCopyText(currentSummary.content)}
+                          onClick={() => handleCopyText(displaySummary.content)}
                         >
                           <Copy className="h-4 w-4" />
                           <span>Copy</span>
@@ -195,13 +211,13 @@ console.log("hello")
                       </div>
                       <div className="bg-muted/50 rounded-md p-4 max-h-[400px] overflow-y-auto">
                         <p className="whitespace-pre-line">
-                          {currentSummary.content}
+                          {displaySummary.content}
                         </p>
                       </div>
                     </div>
 
-                    {currentSummary.keyPoints &&
-                      currentSummary.keyPoints.length > 0 && (
+                    {displaySummary.keyPoints &&
+                      displaySummary.keyPoints.length > 0 && (
                         <>
                           <Separator />
 
@@ -210,7 +226,7 @@ console.log("hello")
                               Key Points
                             </h3>
                             <ul className="list-disc list-inside space-y-1 text-muted-foreground text-sm">
-                              {currentSummary.keyPoints.map((point, index) => (
+                              {displaySummary.keyPoints.map((point, index) => (
                                 <li key={index}>{point}</li>
                               ))}
                             </ul>
@@ -218,7 +234,7 @@ console.log("hello")
                         </>
                       )}
 
-                    {currentSummary.wasTruncated && (
+                    {displaySummary.wasTruncated && (
                       <Alert>
                         <AlertCircle className="h-4 w-4" />
                         <AlertTitle>Note</AlertTitle>
@@ -243,7 +259,7 @@ console.log("hello")
                 )}
               </CardContent>
 
-              {currentSummary && !documentAudio && (
+              {displaySummary && !documentAudio && (
                 <CardFooter>
                   <Button
                     onClick={handleGenerateAudio}
@@ -306,7 +322,7 @@ console.log("hello")
                       Generating audio summary...
                     </p>
                   </div>
-                ) : currentSummary ? (
+                ) : displaySummary ? (
                   <div className="flex flex-col items-center justify-center py-8 text-center gap-3">
                     <p className="text-muted-foreground">
                       No audio summary available yet.
